@@ -73,10 +73,10 @@ extern int limitremoving_arg;
 extern int limitremoving_lmp;
 
 // CPhipps - old compatibility testing flags aliased to new handling
-#define compatibility (compatibility_level<=boom_compatibility_compatibility)
+#define compatibility (compatibility_level <= boom_compatibility_compatibility)
 #define demo_compatibility (compatibility_level < boom_compatibility_compatibility)
-#define mbf_features (compatibility_level>=mbf_compatibility)
-#define mbf21 (compatibility_level == mbf21_compatibility)
+#define mbf_features (compatibility_level >= mbf_compatibility)
+#define mbf21 (compatibility_level >= mbf21_compatibility)
 
 extern int demo_insurance;      // killough 4/5/98
 

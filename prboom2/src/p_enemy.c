@@ -3517,6 +3517,18 @@ void A_ClearTracer(mobj_t *actor)
 }
 
 //
+// A_ClearTarget
+// Clear current target.
+//
+void A_ClearTarget(mobj_t *actor)
+{
+    if (!mbf21 || !actor)
+        return;
+
+    P_SetTarget(&actor, NULL);
+}
+
+//
 // A_JumpIfHealthBelow
 // Jumps to a state if caller's health is below the specified threshold.
 //   args[0]: State to jump to
@@ -3559,6 +3571,27 @@ void A_JumpIfTargetInSight(mobj_t* actor)
 
   if (P_CheckSight(actor, actor->target))
     P_SetMobjState(actor, state);
+}
+
+//
+// A_JumpIfTargetHealthBelow
+// Jumps to a state if caller's target is below a certain amount of health.
+//   args[0]: State to jump to
+//   args[1]: Health value to check
+//
+void A_JumpIfTargetHealthBelow(mobj_t* actor)
+{
+    int state;
+    int health;
+
+    if (!mbf21 || !actor || !actor->target)
+        return;
+
+    state =             ((int)actor->state->args[0]);
+    health =            ((int)actor->state->args[1]);
+
+    if (actor->target->health < health)
+        P_SetMobjState(actor, state);
 }
 
 //
