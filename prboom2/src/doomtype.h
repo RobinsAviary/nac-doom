@@ -144,10 +144,11 @@ typedef enum {
   placeholder_19_compatibility,
   placeholder_20_compatibility,
   mbf21_compatibility,                   /* MBF21 */
+  nac26_compatibility,
   MAX_COMPATIBILITY_LEVEL,               /* Must be last entry */
   /* Aliases follow */
   boom_compatibility = boom_201_compatibility, /* Alias used by G_Compatibility */
-  best_compatibility = mbf21_compatibility
+  best_compatibility = nac26_compatibility
 } complevel_t_e;
 typedef int complevel_t;
 

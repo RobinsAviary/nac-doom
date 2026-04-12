@@ -3522,7 +3522,7 @@ void A_ClearTracer(mobj_t *actor)
 //
 void A_ClearTarget(mobj_t *actor)
 {
-    if (!mbf21 || !actor)
+    if (!nac26 || !actor)
         return;
 
     P_SetTarget(&actor, NULL);
@@ -3584,7 +3584,7 @@ void A_JumpIfTargetHealthBelow(mobj_t* actor)
     int state;
     int health;
 
-    if (!mbf21 || !actor || !actor->target)
+    if (!nac26 || !actor || !actor->target)
         return;
 
     state =             ((int)actor->state->args[0]);

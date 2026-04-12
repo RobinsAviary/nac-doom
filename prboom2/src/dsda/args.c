@@ -139,7 +139,7 @@ static arg_config_t arg_config[dsda_arg_count] = {
   [dsda_arg_complevel] = {
     "-complevel", "-cl", NULL, NULL,
     "sets the compatibility level",
-    arg_complevel, -1, mbf21_compatibility,
+    arg_complevel, -1, MAX_COMPATIBILITY_LEVEL - 1,
   },
   [dsda_arg_fast] = {
     "-fast", NULL, NULL, NULL,
