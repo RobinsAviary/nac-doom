@@ -59,7 +59,6 @@ set(LUMPS
     lumps/soundfont/sndfont.lmp
     lumps/dsdacr.lmp
     lumps/nyanhud.lmp
-    lumps/nyantc.lmp
 )
 
 set(COLORMAPS
@@ -486,7 +485,7 @@ set(WAD_CMDLINE
 
 add_custom_command(
     OUTPUT ${WAD_DATA_PATH}
-    COMMAND nyan_rdatawad -I "${CMAKE_CURRENT_SOURCE_DIR}" ${WAD_CMDLINE} -o "${WAD_DATA_PATH}"
+    COMMAND $<TARGET_FILE:nyan_rdatawad> -I "${CMAKE_CURRENT_SOURCE_DIR}" ${WAD_CMDLINE} -o "${WAD_DATA_PATH}"
     DEPENDS nyan_rdatawad ${WAD_SRC}
     VERBATIM
 )

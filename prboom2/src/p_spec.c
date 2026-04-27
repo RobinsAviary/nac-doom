@@ -54,6 +54,7 @@
 #include "p_inter.h"
 #include "p_enemy.h"
 #include "s_sound.h"
+#include "s_advsound.h"
 #include "sounds.h"
 #include "i_sound.h"
 #include "m_bbox.h"                                         // phares 3/20/98
@@ -294,7 +295,7 @@ void P_InitPicAnims (void)
 {
   int         i;
   const animdef_t *animdefs; //jff 3/23/98 pointer to animation lump
-  int         lump = -1;
+  int         lump = LUMP_NOT_FOUND;
   //  Init animation
 
   if (map_format.animdefs)
@@ -305,22 +306,23 @@ void P_InitPicAnims (void)
 
   if (heretic)
   {
-    lump = W_CheckNumForName("ANIMATED");
+    lump = W_GetAnimatedOrSwitchesLump("ANIMATED");
 
-    if (lump != LUMP_NOT_FOUND && lumpinfo[lump].source != source_port_wad)
+    // Heretic keeps using built-in animdefs unless an IWAD/PWAD lump exists
+    if (W_LumpNumExists(lump) && !W_LumpNumInPortWad(lump))
       animdefs = (const animdef_t *) W_LumpByNum(lump);
     else
       animdefs = heretic_animdefs;
   }
   else
   {
-    lump = W_GetNumForName("ANIMATED"); // cph - new wad lump handling
+    lump = W_GetAnimatedOrSwitchesLump("ANIMATED"); // cph - new wad lump handling
     //jff 3/23/98 read from predefined or wad lump instead of table
     animdefs = (const animdef_t *)W_LumpByNum(lump);
   }
 
   lastanim = anims;
-  for (i=0 ; animdefs[i].istexture != -1 ; i++)
+  for (i=0 ; animdefs[i].istexture != LUMP_NOT_FOUND ; i++)
   {
     // 1/11/98 killough -- removed limit by array-doubling
     if (lastanim >= anims + maxanims)
@@ -334,7 +336,7 @@ void P_InitPicAnims (void)
     if (animdefs[i].istexture)
     {
       // different episode ?
-      if (R_CheckTextureNumForName(animdefs[i].startname) == -1)
+      if (R_CheckTextureNumForName(animdefs[i].startname) == LUMP_NOT_FOUND)
           continue;
 
       lastanim->picnum = R_TextureNumForName (animdefs[i].endname);
@@ -1243,6 +1245,9 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
   player_t *player;
   const char *message = NULL;
   int sfx = sfx_None;
+  int blink_blue = KEYBLINK_NONE;
+  int blink_yellow = KEYBLINK_NONE;
+  int blink_red = KEYBLINK_NONE;
   dboolean successful = true;
 
   if (!mo || !mo->player)
@@ -1259,6 +1264,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_REDC : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_red = KEYBLINK_CARD;
         successful = false;
       }
       break;
@@ -1267,6 +1273,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_BLUEC : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_blue = KEYBLINK_CARD;
         successful = false;
       }
       break;
@@ -1275,6 +1282,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_YELLOWC : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_yellow = KEYBLINK_CARD;
         successful = false;
       }
       break;
@@ -1283,6 +1291,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_REDS : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_red = KEYBLINK_SKULL;
         successful = false;
       }
       break;
@@ -1291,6 +1300,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_BLUES : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_blue = KEYBLINK_SKULL;
         successful = false;
       }
       break;
@@ -1299,6 +1309,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_YELLOWS : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_yellow = KEYBLINK_SKULL;
         successful = false;
       }
       break;
@@ -1314,6 +1325,9 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_ANY : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_blue = KEYBLINK_EITHER;
+        blink_yellow = KEYBLINK_EITHER;
+        blink_red = KEYBLINK_EITHER;
         successful = false;
       }
       break;
@@ -1329,6 +1343,9 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_ALL6 : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_blue = KEYBLINK_BOTH;
+        blink_yellow = KEYBLINK_BOTH;
+        blink_red = KEYBLINK_BOTH;
         successful = false;
       }
       break;
@@ -1338,6 +1355,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_REDK : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_red = KEYBLINK_BOTH;
         successful = false;
       }
       break;
@@ -1347,6 +1365,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_BLUEK : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_blue = KEYBLINK_BOTH;
         successful = false;
       }
       break;
@@ -1356,6 +1375,7 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_YELLOWK : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_yellow = KEYBLINK_BOTH;
         successful = false;
       }
       break;
@@ -1368,6 +1388,9 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
       {
         message = legacy ? s_PD_ALL3 : NULL;
         sfx = legacy ? sfx_oof : sfx_None;
+        blink_red = KEYBLINK_EITHER;
+        blink_yellow = KEYBLINK_EITHER;
+        blink_blue = KEYBLINK_EITHER;
         successful = false;
       }
     default:
@@ -1377,6 +1400,11 @@ dboolean P_CheckKeys(mobj_t *mo, zdoom_lock_t lock, dboolean legacy)
   if (message)
   {
     dsda_AddPlayerColoredMessage(message, player);
+  }
+
+  if (legacy)
+  {
+    ST_SetKeyBlink(player, blink_blue, blink_yellow, blink_red);
   }
 
   if (sfx != sfx_None)
@@ -1533,6 +1561,30 @@ int P_CheckTag(line_t *line)
 
     case 48:                // Scrolling walls
     case 85:
+    case 2057:              // ID24 Music changers
+    case 2058:
+    case 2059:
+    case 2060:
+    case 2061:
+    case 2062:
+    case 2063:
+    case 2064:
+    case 2065:
+    case 2066:
+    case 2067:
+    case 2068:
+    case 2087:
+    case 2088:
+    case 2089:
+    case 2090:
+    case 2091:
+    case 2092:
+    case 2093:
+    case 2094:
+    case 2095:
+    case 2096:
+    case 2097:
+    case 2098:
       return 1;   // zero tag allowed
 
     default:
@@ -1883,6 +1935,71 @@ void P_CrossHexenSpecialLine(line_t *line, int side, mobj_t *thing, dboolean bos
   {
     P_ActivateLine(line, thing, side, SPAC_PCROSS);
   }
+}
+
+//
+// EV_ChangeMusic() -- ID24 Music Changers
+//
+// Generic solution for changing the currently playing music during play time.
+// There are four type of music changing behavior, all of them available in all
+// six major activation triggers (W1, WR, S1, SR, G1, GR) totalling 24 lines.
+// All specials can be triggered from either side of the line being activated.
+// Of the four categories, there are two conditions:
+//
+//  1. If the given music lump will loop or not
+//  2. If it will reset to the map's default when no music lump is defined
+//
+// Giving the four resulting categories:
+// * Change music and make it loop only if a track is defined.
+// * Change music and make it play only once and stop all music after.
+// * Change music and make it loop, reset to looping default if no track
+//    defined.
+// * Change music and make it play only once, reset to looping default if no
+//    track defined.
+//
+
+void EV_ChangeMusic(line_t *line, int side)
+{
+  dboolean once = false;
+  dboolean loops = false;
+  dboolean resets = false;
+
+  int music = side ? line->backmusic : line->frontmusic;
+
+  switch (line->special)
+  {
+    case 2057: case 2059: case 2061: case 2063:
+    case 2065: case 2067: case 2087: case 2089:
+    case 2091: case 2093: case 2095: case 2097:
+      once = true;
+      break;
+  }
+
+  switch (line->special)
+  {
+    case 2057: case 2058: case 2059: case 2060:
+    case 2061: case 2062: case 2087: case 2088:
+    case 2089: case 2090: case 2091: case 2092:
+      loops = true;
+      break;
+  }
+
+  switch (line->special)
+  {
+    case 2087: case 2088: case 2089: case 2090:
+    case 2091: case 2092: case 2093: case 2094:
+    case 2095: case 2096: case 2097: case 2098:
+      resets = true;
+      break;
+  }
+
+  if (music)
+    S_ChangeMusInfoMusic(music, loops);
+  else if (resets)
+    S_ChangeMusInfoMusic(musinfo.items[0], true); // Always loops when defaulting
+
+  if (once)
+    line->special = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2506,6 +2623,12 @@ void P_CrossCompatibleSpecialLine(line_t *line, int side, mobj_t *thing, dboolea
       EV_DoFloor(line,raiseFloorTurbo);
       break;
 
+    case 2057: case 2063: case 2087: case 2093:
+    case 2058: case 2064: case 2088: case 2094:
+      // ID24 Music Changers
+      EV_ChangeMusic(line, side);
+      break;
+
       // Extended walk triggers
 
       // jff 1/29/98 added new linedef types to fill all functions out so that
@@ -2853,7 +2976,7 @@ void P_CrossZDoomSpecialLine(line_t *line, int side, mobj_t *thing, dboolean bos
 // impacted. Change is qualified by demo_compatibility.
 //
 
-void P_ShootCompatibleSpecialLine(mobj_t *thing, line_t *line)
+void P_ShootCompatibleSpecialLine(mobj_t *thing, line_t *line, int side)
 {
   //jff 02/04/98 add check here for generalized linedef
   if (!demo_compatibility)
@@ -2995,6 +3118,17 @@ void P_ShootCompatibleSpecialLine(mobj_t *thing, line_t *line)
         P_ChangeSwitchTexture(line,0);
       break;
 
+    // ID24 Music Changers
+    case 2061: case 2067: case 2091: case 2097:
+      P_ChangeSwitchTexture(line,0);
+      EV_ChangeMusic(line, side);
+      break;
+
+    case 2062: case 2068: case 2092: case 2098:
+      P_ChangeSwitchTexture(line,1);
+      EV_ChangeMusic(line, side);
+      break;
+
     //jff 1/30/98 added new gun linedefs here
     // killough 1/31/98: added demo_compatibility check, added inner switch
 
@@ -3025,9 +3159,9 @@ void P_ShootCompatibleSpecialLine(mobj_t *thing, line_t *line)
   }
 }
 
-void P_ShootHexenSpecialLine(mobj_t *thing, line_t *line)
+void P_ShootHexenSpecialLine(mobj_t *thing, line_t *line, int side)
 {
-  P_ActivateLine(line, thing, 0, SPAC_IMPACT);
+  P_ActivateLine(line, thing, 0, SPAC_IMPACT); // Ignore side for now
 }
 
 int disable_nuke;  // killough 12/98: nukage disabling cheat
@@ -5520,6 +5654,11 @@ void P_CrossHereticSpecialLine(line_t * line, int side, mobj_t * thing, dboolean
             break;
         case 98:               // Lower Floor (TURBO)
             EV_DoFloor(line, turboLower);
+            break;
+        case 2057: case 2063: case 2087: case 2093:
+        case 2058: case 2064: case 2088: case 2094:
+            // ID24 Music Changers
+            EV_ChangeMusic(line, side);
             break;
     }
 }

@@ -541,17 +541,30 @@ static void cheat_fa()
     plyr->armortype = idfa_armor_class;  // Ty 03/09/98 - deh
 
     // You can't own weapons that aren't in the game // phares 02/27/98
-    for (i=0;i<NUMWEAPONS;i++)
-      if (!(((i == wp_plasma || i == wp_bfg) && gamemode == shareware) ||
-            (i == wp_supershotgun && gamemode != commercial)))
-        plyr->weaponowned[i] = true;
+    if (heretic)
+    {
+      for (i=0;i<NUMWEAPONS;i++)
+        if (!((i == wp_skullrod || i == wp_phoenixrod || i == wp_mace) && gamemode == shareware))
+          plyr->weaponowned[i] = true;
 
-    for (i=0;i<NUMAMMO;i++)
-      if (i!=am_cell || gamemode!=shareware)
-        plyr->ammo[i] = plyr->maxammo[i];
+      for (i=0;i<NUMAMMO;i++)
+        if (i!=am_skullrod || i!=am_phoenixrod || i!=am_mace || gamemode!=shareware)
+          plyr->ammo[i] = plyr->maxammo[i];
+    }
+    else // Doom
+    {
+      for (i=0;i<NUMWEAPONS;i++)
+        if (!(((i == wp_plasma || i == wp_bfg) && gamemode == shareware) ||
+              (i == wp_supershotgun && gamemode != commercial)))
+          plyr->weaponowned[i] = true;
 
-    dsda_AddMessage(s_STSTR_FAADDED);
+      for (i=0;i<NUMAMMO;i++)
+        if (i!=am_cell || gamemode!=shareware)
+          plyr->ammo[i] = plyr->maxammo[i];
+    }
   }
+
+  dsda_AddMessage(raven ? s_HERETIC_TXT_CHEATWEAPONS : s_STSTR_FAADDED);
 }
 
 static void cheat_k()
@@ -567,7 +580,7 @@ static void cheat_k()
           if (plyr == &players[consoleplayer])  // Add hexen keys to hud
             plyr->ravenkeys |= 1 << i;
         }
-        dsda_AddMessage("Keys Added");
+        dsda_AddMessage(raven ? s_HERETIC_TXT_CHEATKEYS : "Keys Added");
       }
 }
 
@@ -2201,6 +2214,7 @@ static cheat_input_t cheat_input[] = {
   { dsda_input_iddt, cht_always, cheat_ddt, 0 },
   { dsda_input_ponce, not_demo, cheat_reset_health, 0 },
   { dsda_input_shazam, not_demo, cheat_tome, 0 },
+  { dsda_input_inventory, not_demo, cheat_inventory, 0 },
   { dsda_input_chicken, not_demo, cheat_chicken, 0 },
   { dsda_input_notarget, not_demo, cheat_notarget, 0 },
   { dsda_input_freeze, not_demo, cheat_freeze, 0 },
@@ -2419,6 +2433,9 @@ static void cheat_inventory(void)
   {
     for (j = 0; j < g_arti_limit; j++)
     {
+			if (heretic && gamemode == shareware && (i == arti_superhealth || i == arti_teleport))
+				continue;
+
       P_GiveArtifact(plyr, i, NULL);
     }
   }

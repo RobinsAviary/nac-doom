@@ -3715,6 +3715,7 @@ setup_menu_t keys_cheats_settings[] =
   { "Reveal Map", S_INPUT, m_scrn, KB_X, 0, dsda_input_iddt },
   { "Reset Health", S_INPUT, m_scrn, KB_X, 0, dsda_input_ponce },
   { "Tome of Power", S_INPUT, m_scrn, KB_X, 0, dsda_input_shazam },
+  { "All Artifacts", S_INPUT, m_scrn, KB_X, 0, dsda_input_inventory },
   { "Chicken", S_INPUT, m_scrn, KB_X, 0, dsda_input_chicken },
   { "No Target", S_INPUT, m_scrn, KB_X, 0, dsda_input_notarget },
   { "Freeze", S_INPUT, m_scrn, KB_X, 0, dsda_input_freeze },
@@ -4433,7 +4434,7 @@ setup_menu_t* audio_settings[] =
 setup_menu_t audio_adv_settings[] = {
   { "Number of Sound Channels", S_THERMO, m_conf, G_X, dsda_config_snd_channels },
   EMPTY_LINE,
-  { "Pitch-Shifiting", S_YESNO, m_conf, G_X, dsda_config_pitched_sounds },
+  { "Pitch-Shifting", S_YESNO, m_conf, G_X, dsda_config_pitched_sounds },
   { "Disable Sound Cutoffs", S_YESNO, m_conf, G_X, dsda_config_full_sounds },
   EMPTY_LINE,
   { "Limit Overlapping for Same-Sound", S_YESNO, m_conf, G_X, dsda_config_parallel_sfx_active },
@@ -5225,6 +5226,7 @@ static const char* automap_stat_format_list[] = { "Match Hud", "ratio", "percent
 setup_menu_t exhud_gen_settings[] = {
   { "Use Extended Hud", S_YESNO, m_conf, G_X, dsda_config_exhud },
   { "Ex Hud Scale", S_PERC, m_conf, G_X, dsda_config_ex_text_scale },
+  { "Ex Hud Height Ratio", S_PERC, m_conf, G_X, dsda_config_ex_text_ratio_height },
   EMPTY_LINE,
   { "Ex Hud Free Text", S_NAME | S_NYAN, m_conf, G_X, dsda_config_free_text },
   { "Show Free Text", S_YESNO | S_NYAN, m_conf, G_X, dsda_config_free_text_active },
