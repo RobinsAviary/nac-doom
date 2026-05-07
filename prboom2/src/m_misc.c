@@ -443,6 +443,7 @@ cfg_def_t cfg_defs[] =
   MIGRATED_SETTING(dsda_config_fuzzmode),
   MIGRATED_SETTING(dsda_config_fuzzscale),
   MIGRATED_SETTING(dsda_config_multiple_area_maps),
+  MIGRATED_SETTING(dsda_config_doomguy_angry_face_fix),
   MIGRATED_SETTING(dsda_config_blockmap_fix),
   MIGRATED_SETTING(dsda_config_organize_failed_demos),
   MIGRATED_SETTING(dsda_config_demo_end_quit),
@@ -473,6 +474,7 @@ cfg_def_t cfg_defs[] =
   MIGRATED_SETTING(nyan_config_colored_blood_spectre),
   MIGRATED_SETTING(nyan_config_loading_disk),
   MIGRATED_SETTING(nyan_config_highlight_nyan_features),
+  MIGRATED_SETTING(dsda_config_show_all_game_specific_options),
 
   SETTING_HEADING("Extended HUD Status Icons Widget"),
   MIGRATED_SETTING(nyan_config_ex_status_widget),

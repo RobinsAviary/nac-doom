@@ -156,6 +156,7 @@ void S_ToggleRandomMusic(void);
 void dsda_UpdateTranMap(void);
 void cht_UpdateCheats(void);
 void R_UpdateFuzzSize(void);
+void M_RefreshGameSpecificMenuOptions(void);
 
 void dsda_TrackConfigFeatures(void) {
   if (!demorecording)
@@ -669,6 +670,10 @@ dsda_config_t dsda_config[dsda_config_count] = {
   [nyan_config_highlight_nyan_features] = {
     "nyan_highlight_nyan_features", nyan_config_highlight_nyan_features,
     CONF_BOOL(0)
+  },
+  [dsda_config_show_all_game_specific_options] = {
+    "dsda_show_all_game_specific_options", dsda_config_show_all_game_specific_options,
+    CONF_BOOL(0), NULL, NOT_STRICT, M_RefreshGameSpecificMenuOptions
   },
   [dsda_config_script_0] = {
     "dsda_script_0", dsda_config_script_0,
@@ -1682,6 +1687,10 @@ dsda_config_t dsda_config[dsda_config_count] = {
   [dsda_config_multiple_area_maps] = {
     "dsda_multiple_area_maps", dsda_config_multiple_area_maps,
     CONF_BOOL(1), NULL, STRICT_INT(0)
+  },
+  [dsda_config_doomguy_angry_face_fix] = {
+    "dsda_doomguy_angry_face_fix", dsda_config_doomguy_angry_face_fix,
+    CONF_BOOL(1)
   },
   [dsda_config_blockmap_fix] = {
     "dsda_blockmap_fix", dsda_config_blockmap_fix,
