@@ -2300,7 +2300,7 @@ static dboolean M_RavenDisabled(const setup_menu_t* s)
         nyan_config_loading_disk, dsda_config_fuzzmode, dsda_config_fuzzscale, dsda_config_enhanced_liteamp,
         nyan_config_item_bonus_flash, nyan_config_colored_blood, dsda_config_sts_traditional_keys,
         nyan_config_hud_berserk, nyan_config_hud_armoricon, dsda_config_enhanced_doom_over_under,
-        dsda_config_quit_sounds, dsda_config_switch_berserk_preferred,
+        dsda_config_quit_sounds, dsda_config_switch_berserk_preferred, nyan_config_skullpop_easter_egg
       };
 
       if (M_DisableAndSetConfig(s, options_disable_false, arrlen(options_disable_false), false))
@@ -4005,6 +4005,7 @@ setup_menu_t auto_options_settings[] =
   { "Cycle Level Title / Author", S_YESNO | S_NYAN, m_conf, g_all, AU_X, dsda_config_map_title_author_cycle },
   { "Show Keys on Automap", S_YESNO | S_NYAN, m_conf, g_all, AU_X, dsda_config_map_show_keys },
   { "Use Automap Hud for Fullscreen", S_YESNO | S_NYAN, m_conf, g_all, AU_X, dsda_config_full_automap_exhud },
+  { "Automap Stat Icons", S_YESNO | S_NYAN, m_conf, g_all, AU_X, dsda_config_map_stat_icons },
   EMPTY_LINE,
   { "Grid cell size 8..256, -1 for auto", S_NUM, m_conf, g_all, AU_X, dsda_config_map_grid_size },
   { "Pan speed (1..32)", S_NUM, m_conf, g_all, AU_X, dsda_config_map_pan_speed },
@@ -4016,7 +4017,7 @@ setup_menu_t auto_options_settings[] =
   { "Stat Totals", S_YESNO, m_conf, g_all, AU_X, dsda_config_map_totals },
   { "Player Coordinates", S_YESNO, m_conf, g_all, AU_X, dsda_config_map_coordinates },
   { "Level / Total Time", S_YESNO, m_conf, g_all, AU_X, dsda_config_map_time },
-  { "Level Title", S_YESNO, m_conf, g_all, AU_X, g_all, dsda_config_map_title },
+  { "Level Title", S_YESNO, m_conf, g_all, AU_X, dsda_config_map_title },
 
   NEXT_PAGE(auto_appearance_settings),
   FINAL_ENTRY
@@ -4414,6 +4415,7 @@ setup_menu_t gen_device_settings[] = {
 
 setup_menu_t gen_gamesim_settings[] = {
   { "Death Use Action", S_CHOICE, m_conf, g_all, G2_X, dsda_config_death_use_action, 0, death_use_strings },
+  { "Rare Player Gib Death", S_YESNO | S_NYAN, m_conf, g_doom, G2_X, nyan_config_skullpop_easter_egg },
   { "Skip Ethereal Travel", S_YESNO | S_NYAN, m_conf, g_hexen, G2_X, dsda_config_hexen_skip_ethereal_travel },
   { "Simpler Puzzle Piece Use", S_YESNO | S_NYAN, m_conf, g_hexen, G2_X, dsda_config_hexen_simpler_puzzle_use },
   EMPTY_LINE,
@@ -4422,6 +4424,7 @@ setup_menu_t gen_gamesim_settings[] = {
   { "Rewind Interval (s)", S_NUM, m_conf, g_all, G2_X, dsda_config_auto_key_frame_interval, 0, empty_list, DEPEND(dsda_config_auto_key_frame_active, true) },
   { "Rewind Depth", S_NUM, m_conf, g_all, G2_X, dsda_config_auto_key_frame_depth, 0, empty_list, DEPEND(dsda_config_auto_key_frame_active, true) },
   { "Rewind Timeout (ms)", S_NUM, m_conf, g_all, G2_X, dsda_config_auto_key_frame_timeout, 0, empty_list, DEPEND(dsda_config_auto_key_frame_active, true) },
+  { "Block Rewind After Timeout", S_YESNO | S_NYAN, m_conf, g_all, G2_X, dsda_config_auto_key_frame_timeout_block, 0, empty_list, DEPEND(dsda_config_auto_key_frame_active, true) },
 
   PREV_PAGE(gen_device_settings),
   NEXT_PAGE(gen_misc_settings),
@@ -4705,13 +4708,14 @@ static const char* fake_contrast_list[] =
 };
 
 static const char *gl_fade_mode_list[] = { "Normal", "Smooth", NULL };
+static const char* wipe_screen_list[] = { "Off", "On", "Fast", NULL };
 static const char* menu_background_list[] = { "Off", "Dark", "Texture", NULL };
 static const char* palette_list[] = { "Off", "Default", NULL };
 static const char* palette_reduced_list[] = { "Off", "Default", "Reduced", NULL };
 static const char* swirling_flat_list[] = { "Off", "Smart", "All", NULL };
 
 setup_menu_t display_options_settings[] = {
-  { "Wipe Screen Effect", S_YESNO,  m_conf, g_doom, G_X, dsda_config_render_wipescreen },
+  { "Screen Wipe Effect", S_CHOICE | S_NYAN, m_conf, g_doom, G_X, dsda_config_render_wipescreen, 0, wipe_screen_list },
   { "Linear Sky Scrolling", S_YESNO, m_conf, g_all, G_X, dsda_config_render_linearsky, DEPEND_SW },
   { "Quake Intensity", S_PERC, m_conf, g_all, G_X, dsda_config_quake_intensity },
   { "Fake Contrast", S_CHOICE, m_conf, g_all, G_X, dsda_config_fake_contrast_mode, 0, fake_contrast_list },
@@ -4824,6 +4828,12 @@ setup_menu_t display_color_settings[] = {
   {"Map Time Level", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_time_level },
   {"Map Time Total", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_time_total },
   {"Map Coords", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_coords },
+  {"Kills Icon", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_map_icon_kills },
+  {"Items Icon", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_map_icon_items },
+  {"Secrets Icon", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_map_icon_secrets },
+  {"Kills Icon", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_map_raven_icon_kills },
+  {"Items Icon", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_map_raven_icon_items },
+  {"Secrets Icon", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_map_raven_icon_secrets },
   EMPTY_LINE,
   
   TITLE("Messages", G_X),
@@ -4873,6 +4883,12 @@ setup_menu_t display_color_settings[] = {
   EMPTY_LINE,
 
   TITLE("Powerups", G_X),
+  {"All Kills", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_exhud_status_all_kills },
+  {"All Items", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_exhud_status_all_items },
+  {"All Secrets", S_CRCHOICE, m_conf, g_doom, G_X, dsda_tc_exhud_status_all_secrets },
+  {"All Kills", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_exhud_status_raven_all_kills },
+  {"All Items", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_exhud_status_raven_all_items },
+  {"All Secrets", S_CRCHOICE, m_conf, g_raven, G_X, dsda_tc_exhud_status_raven_all_secrets },
   {"Armor One", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_exhud_status_armor_one },
   {"Armor Two", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_exhud_status_armor_two },
   {"Berserk", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_exhud_status_berserk },
@@ -5228,17 +5244,24 @@ static const char* announce_map_list[] = { "Off", "On", "Subtle", NULL };
 static const char* secretarea_list[] = { "Off", "On", "Subtle", NULL };
 static const char* secret_format_list[] = { "Default", "Ratio", "Percent", NULL };
 
+static const char* secret_sound_list[] = { "None", "Default", "Subtle", NULL };
+static const char* milestone_sound_list[] = { "None", "Secret", "Subtle", NULL };
+
 setup_menu_t announce_gen_settings[] = {
   { "Announce Map On Entry", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_announce_map, 0, announce_map_list },
   EMPTY_LINE,
   TITLE("Secrets", G_X),
   { "Report Revealed Secrets", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_hudadd_secretarea, 0, secretarea_list },
   { "Secret Msg Format", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_secret_format, 0, secret_format_list, EXCLUDE(dsda_config_hudadd_secretarea, false) },
+  { "Secret Sound", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_secret_sfx, 0, secret_sound_list, EXCLUDE(dsda_config_hudadd_secretarea, false)  },
   EMPTY_LINE,
   TITLE("Milestones", G_X),
   { "Report All Kills", S_YESNO | S_NYAN, m_conf, g_all, G_X, dsda_config_kills_milestone },
+  { "Sound", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_kills_milestone_sfx, 0, milestone_sound_list, DEPEND(dsda_config_kills_milestone, true) },
   { "Report All Items", S_YESNO | S_NYAN, m_conf, g_all, G_X, dsda_config_items_milestone },
+  { "Sound", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_items_milestone_sfx, 0, milestone_sound_list, DEPEND(dsda_config_items_milestone, true)  },
   { "Report All Secrets", S_YESNO | S_NYAN, m_conf, g_all, G_X, dsda_config_secrets_milestone },
+  { "Sound", S_CHOICE | S_NYAN, m_conf, g_all, G_X, dsda_config_secrets_milestone_sfx, 0, milestone_sound_list, DEPEND(dsda_config_secrets_milestone, true)  },
   FINAL_ENTRY
 };
 
@@ -5337,6 +5360,10 @@ setup_menu_t status_icons_gen_settings[] = {
   { "Enable Status Widget", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_status_widget },
   { "Enable Blinking", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_status_blinking, STATUS_WIDGET_ON },
   EMPTY_LINE,
+  { "All Kills", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_status_all_kills, STATUS_WIDGET_ON },
+  { "All Items", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_status_all_items, STATUS_WIDGET_ON },
+  { "All Secrets", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_status_all_secrets, STATUS_WIDGET_ON },
+  EMPTY_LINE,
   { "Armor", S_YESNO | S_NYAN, m_conf, g_not_hexen, G_X, nyan_config_ex_status_armor, STATUS_WIDGET_ON },
   { "Berserk", S_YESNO | S_NYAN, m_conf, g_doom, G_X, nyan_config_ex_status_berserk, STATUS_WIDGET_ON },
   { "Area Map", S_YESNO | S_NYAN, m_conf, g_not_hexen, G_X, nyan_config_ex_status_areamap, STATUS_WIDGET_ON },
@@ -5363,6 +5390,10 @@ setup_menu_t status_timers_gen_settings[] = {
   { "Enable Status Timers", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_widget },
   { "Enable Blinking", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_blinking, POWERUPS_WIDGET_ON },
   { "Hide Duration", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_hide_duration, POWERUPS_WIDGET_ON },
+  EMPTY_LINE,
+  { "All Kills", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_all_kills, POWERUPS_WIDGET_ON },
+  { "All Items", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_all_items, POWERUPS_WIDGET_ON },
+  { "All Secrets", S_YESNO | S_NYAN, m_conf, g_all, G_X, nyan_config_ex_timer_all_secrets, POWERUPS_WIDGET_ON },
   EMPTY_LINE,
   { "Armor", S_YESNO | S_NYAN, m_conf, g_not_hexen, G_X, nyan_config_ex_timer_armor, POWERUPS_WIDGET_ON },
   { "Berserk", S_YESNO | S_NYAN, m_conf, g_doom, G_X, nyan_config_ex_timer_berserk, POWERUPS_WIDGET_ON },
@@ -8614,6 +8645,15 @@ void M_ShadedScreen(void)
   V_DrawShaded(0, 0, SCREENWIDTH, SCREENHEIGHT, screenshade);
 }
 
+static dboolean M_OptionalLumpMissing(const menuitem_t *item)
+{
+  // if not optional, return
+  if (!(item->flags & MENUF_OPTLUMP))
+    return false;
+
+  return item->name[0] && !W_LumpNameExists(item->name);
+}
+
 //
 // M_Drawer
 // Called after the view has been rendered,
@@ -8691,19 +8731,20 @@ void M_Drawer (void)
     lumps_missing = 0;
 
     for (i = 0; i < max; i++)
-      if (
-        currentMenu->menuitems[i].status != -1 && (
-          !currentMenu->menuitems[i].name[0] || !W_LumpNameExists(currentMenu->menuitems[i].name)
-        ) && !(currentMenu->menuitems[i].flags & MENUF_OPTLUMP)
-      )
+    {
+      dboolean optional_lump = currentMenu->menuitems[i].flags & MENUF_OPTLUMP;
+
+      if (currentMenu->menuitems[i].status != -1 && !optional_lump &&
+          (!currentMenu->menuitems[i].name[0] || !W_LumpNameExists(currentMenu->menuitems[i].name)))
         ++lumps_missing;
+    }
 
     for (i = 0; i < max; i++)
     {
+      dboolean optional_lump_missing = M_OptionalLumpMissing(&currentMenu->menuitems[i]);
       const char *alttext = currentMenu->menuitems[i].alttext;
 
-      if (!lumps_missing && currentMenu->menuitems[i].name[0] &&
-          !(currentMenu->menuitems[i].flags & MENUF_OPTLUMP))
+      if (!lumps_missing && currentMenu->menuitems[i].name[0] && !optional_lump_missing)
         V_DrawMenuNamePatch(x, y, currentMenu->menuitems[i].name,
                         currentMenu->menuitems[i].color, VPT_STRETCH);
 
