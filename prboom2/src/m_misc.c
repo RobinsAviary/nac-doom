@@ -138,6 +138,7 @@ cfg_def_t cfg_defs[] =
   MIGRATED_SETTING(dsda_config_snd_midiplayer),
   MIGRATED_SETTING(dsda_config_snd_mididev),
   MIGRATED_SETTING(dsda_config_snd_soundfont),
+  MIGRATED_SETTING(dsda_config_snd_soundfont_dir),
   MIGRATED_SETTING(dsda_config_mus_fluidsynth_chorus),
   MIGRATED_SETTING(dsda_config_mus_fluidsynth_reverb),
   MIGRATED_SETTING(dsda_config_mus_fluidsynth_gain),
@@ -356,9 +357,11 @@ cfg_def_t cfg_defs[] =
   MIGRATED_SETTING(dsda_config_automap_linesize),
   MIGRATED_SETTING(dsda_config_automap_rotate),
   MIGRATED_SETTING(dsda_config_automap_follow),
+  MIGRATED_SETTING(dsda_config_automap_mouse_pan),
   MIGRATED_SETTING(dsda_config_automap_grid),
   MIGRATED_SETTING(dsda_config_map_grid_size),
   MIGRATED_SETTING(dsda_config_map_pan_speed),
+  MIGRATED_SETTING(dsda_config_map_mouse_pan_speed),
   MIGRATED_SETTING(dsda_config_map_scroll_speed),
   MIGRATED_SETTING(dsda_config_map_wheel_zoom),
   MIGRATED_SETTING(dsda_config_map_use_multisamling),
@@ -650,6 +653,7 @@ cfg_input_def_t input_defs[] = {
   INPUT_SETTING("input_map_overlay", dsda_input_map_overlay, 'o', -1, -1),
   INPUT_SETTING("input_map_textured", dsda_input_map_textured, 0, -1, -1),
   INPUT_SETTING("input_map_highlight_by_tag", dsda_input_map_highlight_by_tag, 'h', -1, -1),
+  INPUT_SETTING("input_map_mouse_pan", dsda_input_map_mouse_pan, 'p', -1, -1),
 
   INPUT_SETTING("input_repeat_message", dsda_input_repeat_message, 0, -1, -1),
 
@@ -673,6 +677,7 @@ cfg_input_def_t input_defs[] = {
   INPUT_SETTING("input_menu_enter", dsda_input_menu_enter, KEYD_ENTER, -1, DSDA_CONTROLLER_BUTTON_A),
   INPUT_SETTING("input_menu_escape", dsda_input_menu_escape, KEYD_ESCAPE, -1, DSDA_CONTROLLER_BUTTON_START),
   INPUT_SETTING("input_menu_clear", dsda_input_menu_clear, KEYD_DEL, -1, DSDA_CONTROLLER_BUTTON_BACK),
+  INPUT_SETTING("input_menu_reset", dsda_input_menu_reset, 'r', -1, DSDA_CONTROLLER_BUTTON_Y),
 
   INPUT_SETTING("input_iddqd", dsda_input_iddqd, 0, -1, -1),
   INPUT_SETTING("input_buddha", dsda_input_buddha, 0, -1, -1),
@@ -1078,10 +1083,10 @@ const char* M_CheckWritableDir(const char *dir)
     return NULL;
   }
 
-  if (len + 1 > base_len)
+  if (len + 2 > base_len)
   {
-    base_len = len + 1;
-    base = Z_Malloc(len + 1);
+    base_len = len + 2;
+    base = Z_Realloc(base, base_len);
   }
 
   if (base)
@@ -1175,6 +1180,30 @@ const char *M_strcasestr(const char *haystack, const char *needle)
 static inline int is_boundary(char c)
 {
     return c == '\0' || isspace((unsigned char)c) || ispunct((unsigned char)c);
+}
+
+dboolean M_StringContainsWord(const char *haystack, const char *needle)
+{
+    const char *p = haystack;
+    const size_t needle_len = strlen(needle);
+
+    if (!needle_len)
+    {
+        return false;
+    }
+
+    while ((p = M_strcasestr(p, needle)))
+    {
+        if ((p == haystack || is_boundary(p[-1])) &&
+            is_boundary(p[needle_len]))
+        {
+            return true;
+        }
+
+        p += needle_len;
+    }
+
+    return false;
 }
 
 static char *M_StringReplaceEx(const char *haystack, const char *needle,

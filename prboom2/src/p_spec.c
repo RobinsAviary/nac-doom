@@ -76,6 +76,7 @@
 #include "dsda/messenger.h"
 #include "dsda/scroll.h"
 #include "dsda/skill_info.h"
+#include "dsda/text_color.h"
 #include "dsda/thing_id.h"
 #include "dsda/utility.h"
 
@@ -1593,6 +1594,52 @@ int P_CheckTag(line_t *line)
   return 0;       // zero tag not allowed
 }
 
+dboolean P_IsManualDoor(line_t* line)
+{
+  if (!line->backsector)
+    return false;
+
+  if (map_format.hexen)
+  {
+    if (line->special_args[0])
+      return false;
+
+    switch (line->special)
+    {
+      case zl_door_open:
+      case zl_door_raise:
+      case zl_door_locked_raise:
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
+  if (line->tag)
+    return false;
+
+  switch (line->special)
+  {
+    case 1:
+    case 26:
+    case 27:
+    case 28:
+    case 31:
+    case 32:
+    case 33:
+    case 34:
+      return true;
+
+    case 117:
+    case 118:
+      return !heretic;
+
+    default:
+      return false;
+  }
+}
+
 static const damage_t no_damage = { 0 };
 
 static void P_TransferSectorFlags(unsigned int *dest, unsigned int source)
@@ -1725,8 +1772,11 @@ void P_PlayerAnnounceSecret(player_t *player, const char* message)
 
     if(dsda_IntConfig(dsda_config_hudadd_secretarea)==2)
     {
-      dsda_AddAlert(message);
+      dsda_string_t secret_message;
+      dsda_StringPrintF(&secret_message, "%s%s", dsda_TextColor(dsda_tc_hud_secret_message), message);
+      dsda_AddAlert(secret_message.string);
       S_StartVoidSound(sfx_id);
+      dsda_FreeString(&secret_message);
     }
     else
     {
@@ -4141,8 +4191,12 @@ static void P_InitSectorSpecials(void)
 
   sector = sectors;
   for (i = 0; i < numsectors; i++, sector++)
+  {
+    sector->spawn_special = sector->special;
+
     if (sector->special)
       map_format.init_sector_special(sector, i);
+  }
 }
 
 static void P_InitButtons(void)

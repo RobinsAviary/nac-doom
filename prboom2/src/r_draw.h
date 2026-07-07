@@ -87,6 +87,7 @@ typedef struct draw_column_vars_s
 
   // [AR] mark weapon sprite
   dboolean            isplayersprite;
+  int                 pspritepostheight;
 
   // heretic
   int baseclip;
@@ -118,6 +119,7 @@ typedef struct {
   fixed_t cosine;
   fixed_t planeheight;
   const lighttable_t **planezlight;
+  const lighttable_t *minzlight; // the darkest a colormap can get
 } draw_span_vars_t;
 
 typedef struct {
