@@ -17,7 +17,7 @@
 <br>
 [![Commits Since](https://img.shields.io/github/commits-since/andrikpowell/nyan-doom/latest.svg)](https://github.com/andrikpowell/nyan-doom/commits/master)
 [![Last Commit](https://img.shields.io/github/last-commit/andrikpowell/nyan-doom.svg)](https://github.com/andrikpowell/nyan-doom/commits/master)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/andrikpowell/nyan-doom/continuous_integration.yml)](https://github.com/andrikpowell/nyan-doom/commits/master)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/RobinsAviary/nac-doom/continuous_integration.yml)](https://github.com/RobinsAviary/nac-doom/commits/master)
 [![Top Language](https://img.shields.io/github/languages/top/andrikpowell/nyan-doom.svg)](https://github.com/andrikpowell/nyan-doom)
 <br>
 [![Stars](https://img.shields.io/github/stars/andrikpowell/nyan-doom.svg?style=flat&logo=github)](https://github.com/andrikpowell/nyan-doom/stargazers)
