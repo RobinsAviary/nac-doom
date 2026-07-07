@@ -1346,7 +1346,7 @@ void P_DamageMobjBy(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damag
   dboolean buddha = false;
 
   /* killough 8/31/98: allow bouncers to take damage */
-  if (!(target->flags & (MF_SHOOTABLE | MF_BOUNCES)))
+  if ((!(target->flags & (MF_SHOOTABLE | MF_BOUNCES))) || (damage <= 0 && nac26))
     return; // shouldn't happen...
 
   if (target->health <= 0)
