@@ -123,7 +123,7 @@ static int map_blinking_locks;
 static int map_secret_after;
 static int map_grid_size;
 static int map_pan_speed;
-static int map_mouse_pan_speed;
+static int map_mouse_pan_sensitivity;
 static int map_scroll_speed;
 static int map_wheel_zoom;
 static int map_things_hitboxes;
@@ -142,14 +142,10 @@ static map_things_appearance_t map_things_appearance;
 // moves 140 pixels in 1 second
 #define F_SPEED  (dsda_InputActive(dsda_input_speed) ? !dsda_AutoRun() : dsda_AutoRun())
 #define F_PANINC  (F_SPEED ? map_pan_speed * 2 : map_pan_speed)
-#define PAN_SPEED_DIVISOR 4
-#define M_PANINC_X (FTOM(F_PANINC * SCREENWIDTH / 320) / PAN_SPEED_DIVISOR)
-#define M_PANINC_Y (FTOM(F_PANINC * SCREENHEIGHT / 200) / PAN_SPEED_DIVISOR)
-// mouse map panning
-#define F_MOUSEPANINC  (F_SPEED ? map_mouse_pan_speed * 2 : map_mouse_pan_speed)
-#define MOUSE_PAN_SPEED_DIVISOR 8
-#define MOUSE_PAN_SPEED_BASE 16
-// map zoom
+#define PAN_SPEED_SCALE 4     // Maps default map_pan_speed 16 to Crispy's F_PANINC 4
+#define PAN_MOUSE_SCALE 160   // Crispy's mouse pan scale, later scaled for current resolution
+#define M_PANINC_X (FTOM(F_PANINC * SCREENWIDTH  / 320) / PAN_SPEED_SCALE)
+#define M_PANINC_Y (FTOM(F_PANINC * SCREENHEIGHT / 200) / PAN_SPEED_SCALE)
 #define F_ZOOMINC  (F_SPEED ? map_scroll_speed * 2 : map_scroll_speed)
 // how much zoom-in per tic
 // goes to 2x in 1 second
@@ -158,7 +154,8 @@ static map_things_appearance_t map_things_appearance;
 // pulls out to 0.5x in 1 second
 #define M_ZOOMOUT       ((int) ((float)FRACUNIT / (1.00f + F_ZOOMINC / 200.0f)))
 
-#define PLAYERRADIUS    (16*(1<<MAPBITS)) // e6y
+#define MAPUNIT         (1<<MAPBITS) // Crispy
+#define PLAYERRADIUS    (16*MAPUNIT) // e6y
 
 // translates between frame-buffer and map distances
 #define FTOM(x) FixedMul(((x)<<16),scale_ftom)
@@ -427,9 +424,7 @@ static fixed_t m_x2, m_y2;   // UR x,y window location on the map (map coords)
 
 static fixed_t prev_m_x, prev_m_y;
 
-// mouse panning
-static int mouse_pan_x;
-static int mouse_pan_y;
+static mpoint_t m_paninc2; // [crispy] mouse map panning
 
 //
 // width/height of window on map (map coords)
@@ -667,12 +662,23 @@ void AM_SetMapCenter(fixed_t x, fixed_t y)
   m_y2 = m_y + m_h;
 }
 
+static dboolean AM_AutopageExists(void)
+{
+  int lumpnum = W_CheckNumForName(g_autopage);
+
+  return (lumpnum != LUMP_NOT_FOUND) && (W_LumpLength(lumpnum) == 320*158); // RAW format
+}
+
 static void AM_UpdateParallax(void)
 {
     dboolean minimap = !automap_full;
 
     int dmapx;
     int dmapy;
+
+    // no autopage = no parallax
+    if (!AM_AutopageExists())
+      return;
 
     if (automap_follow && !dsda_Paused())
     {
@@ -701,6 +707,10 @@ static void AM_ParallaxPan(fixed_t incx, fixed_t incy)
 {
   dboolean minimap = !automap_full;
 
+  // no autopage = no parallax
+  if (!AM_AutopageExists())
+    return;
+
   // [crispy] Disable map background scroll in non-follow + rotate mode.
   // The combination of the two effects is unappealing and slightly
   // nauseating.
@@ -708,8 +718,10 @@ static void AM_ParallaxPan(fixed_t incx, fixed_t incy)
   {
     if (autopage_parallax && !minimap) // disable parallax on minimap (same reason above)
     {
-      mapxstart += MTOF(incx) >> 1;
-      mapystart -= MTOF(incy) >> 1;
+      if (incx)
+        mapxstart = prev_mapxstart + MTOF(incx + MAPUNIT / 2);
+      if (incy)
+        mapystart = prev_mapystart - MTOF(incy + MAPUNIT / 2);
     }
   }
 }
@@ -784,13 +796,13 @@ static void AM_changeWindowLoc(void)
   }
 
   // Mouse
-  if (mouse_pan_x || mouse_pan_y)
+  if (m_paninc2.x || m_paninc2.y)
   {
-    incx += FTOM(mouse_pan_x / MOUSE_PAN_SPEED_DIVISOR);
-    incy += FTOM(mouse_pan_y / MOUSE_PAN_SPEED_DIVISOR);
+    incx += m_paninc2.x;
+    incy += m_paninc2.y;
 
-    mouse_pan_x = 0;
-    mouse_pan_y = 0;
+    m_paninc2.x = 0;
+    m_paninc2.y = 0;
   }
 
   AM_moveWindowLoc(prev_m_x, prev_m_y, incx, incy);
@@ -798,10 +810,19 @@ static void AM_changeWindowLoc(void)
 
 static void AM_AddMousePan(int x, int y)
 {
-  int speed = F_MOUSEPANINC;
+  int64_t sensitivity = map_mouse_pan_sensitivity;
+  int64_t dx, dy;
 
-  mouse_pan_x += x * SCREENWIDTH  * speed / 320 / MOUSE_PAN_SPEED_BASE;
-  mouse_pan_y += y * SCREENHEIGHT * speed / 200 / MOUSE_PAN_SPEED_BASE;
+  sensitivity += 5;
+
+  dx = sensitivity * x * SCREENWIDTH  / (320 * PAN_MOUSE_SCALE);
+  dy = sensitivity * y * SCREENHEIGHT / (200 * PAN_MOUSE_SCALE);
+
+  dx = FTOM((fixed_t)CLAMP(dx, INT_MIN / FRACUNIT, INT_MAX / FRACUNIT));
+  dy = FTOM((fixed_t)CLAMP(dy, INT_MIN / FRACUNIT, INT_MAX / FRACUNIT));
+
+  m_paninc2.x = (fixed_t)CLAMP(m_paninc2.x + dx, INT_MIN, INT_MAX);
+  m_paninc2.y = (fixed_t)CLAMP(m_paninc2.y + dy, INT_MIN, INT_MAX);
 }
 
 //
@@ -911,12 +932,9 @@ static void AM_initVariables(void)
   AM_initPlayerTrail();
   AM_SetPlayerArrow();
 
-  m_paninc.x = m_paninc.y = 0;
+  m_paninc.x = m_paninc.y = m_paninc2.x = m_paninc2.y = 0;
   ftom_zoommul = FRACUNIT;
   mtof_zoommul = FRACUNIT;
-
-  if (!W_LumpNameExists(g_autopage)) // Raven AUTOPAGE RAW format (custom size)
-    g_autopage_width = g_autopage_height = 64;
 
   maplump_width = (g_autopage_width * params->video->width) / 320;
   maplump_height = (g_autopage_height * params->video->height) / 200;
@@ -935,7 +953,6 @@ static void AM_initVariables(void)
   oldplr.y = plr->mo->y;
   m_x = (plr->mo->x >> FRACTOMAPBITS) - m_w/2;//e6y
   m_y = (plr->mo->y >> FRACTOMAPBITS) - m_h/2;//e6y
-  mouse_pan_x = mouse_pan_y = 0;
   AM_Ticker();
   AM_changeWindowLoc();
 
@@ -1025,7 +1042,7 @@ void AM_InitParams(void)
   map_blinking_locks = dsda_IntConfig(dsda_config_map_blinking_locks);
   map_secret_after = dsda_IntConfig(dsda_config_map_secret_after);
   map_pan_speed = dsda_IntConfig(dsda_config_map_pan_speed);
-  map_mouse_pan_speed = dsda_IntConfig(dsda_config_map_mouse_pan_speed);
+  map_mouse_pan_sensitivity = dsda_IntConfig(dsda_config_mouse_sensitivity_automap);
   map_scroll_speed = dsda_IntConfig(dsda_config_map_scroll_speed);
   map_grid_size = dsda_IntConfig(dsda_config_map_grid_size);
   map_wheel_zoom = dsda_IntConfig(dsda_config_map_wheel_zoom);
@@ -4265,32 +4282,20 @@ static void AM_setFrameVariables(void)
 //
 //=============================================================================
 
-typedef enum {
-  AUTOMAP_BG_OFF,
-  AUTOMAP_BG_GAME_DEFAULT,
-  AUTOMAP_BG_FORCED,
-} automap_bg_t;
-
 static void AM_DrawBackground (void)
 {
-  int automap_bg = raven ? (autopage_active != AUTOMAP_BG_OFF)
-                         : (autopage_active == AUTOMAP_BG_FORCED);
+  int automap_bg = AM_AutopageExists() && autopage_active;
 
-  if (automap_bg) { // Automap Parallax Background
-    V_BeginUIDraw(); // OpenGL doesn't like flats in AutomapDraw()
-
-    if (W_LumpNameExists(g_autopage)) // Raven AUTOPAGE RAW format (custom size)
-      V_FillNameRawAdv(g_autopage, f_x, f_y, g_autopage_width, g_autopage_height, f_w, f_h, mapxstart, mapystart, VPT_STRETCH);
-
-    else if (W_FlatNameExists(g_autopage)) // AUTOPAGE flat format (64x64)
-      V_FillNameFlatAdv(g_autopage, f_x, f_y, f_w, f_h, mapxstart, mapystart, VPT_STRETCH);
-
-    else // AUTOPAGE flat format (64x64) - fallback
-      V_FillNameFlatAdv("FLOOR4_6", f_x, f_y, f_w, f_h, mapxstart, mapystart, VPT_STRETCH);
-
+  // Automap Parallax Background
+  if (automap_bg)
+  { 
+    // Raven AUTOPAGE RAW format (320x158)
+    V_BeginUIDraw(); // OpenGL doesn't like RAW / flats in AutomapDraw()
+    V_FillNameRawAdv(g_autopage, f_x, f_y, g_autopage_width, g_autopage_height, f_w, f_h, mapxstart, mapystart, VPT_STRETCH);
     V_EndUIDraw();
 
-    if (autopage_fade > 0) // Darken flat
+    // Darken autopage
+    if (autopage_fade > 0)
       V_DrawShaded(f_x, f_y, f_w, f_h, autopage_fade * 31 / 100);
 
     return;
@@ -4327,7 +4332,7 @@ void AM_Drawer (dboolean minimap)
     AM_changeWindowScale();
 
   // Change x,y location
-  if (m_paninc.x || m_paninc.y || mouse_pan_x || mouse_pan_y)
+  if (m_paninc.x || m_paninc.y || m_paninc2.x || m_paninc2.y)
     AM_changeWindowLoc();
 
   AM_setFrameVariables();

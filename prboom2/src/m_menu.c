@@ -156,6 +156,9 @@
 #define S_HIDDEN        0x000000800000000ULL // hide game-specific options
 #define S_NORESET       0x000001000000000ULL // exclude from reset
 #define S_TWO_LINE      0x000002000000000ULL // draw two-line option
+#define S_PERC_RANGE    0x000004000000000ULL // convert config range to 0-100%
+#define S_MULTIPLIER    0x000008000000000ULL // display config as a multiplier
+#define S_UNBOUND       0x000010000000000ULL // allow values outside display thermo
 
 /* S_SHOWDESC  = the set of items whose description should be displayed
  * S_SHOWSET   = the set of items whose setting should be displayed
@@ -163,13 +166,13 @@
  * S_HASDEFPTR = the set of items whose var field points to default array
  */
 
-#define S_SHOWDESC (S_LABEL|S_TITLE|S_YESNO|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_COLOR|S_PREV|S_NEXT|S_INPUT|S_WEAP|S_NUM|S_PERC|S_FILE|S_CREDIT|S_CHOICE|S_FUNC|S_THERMO|S_NAME)
+#define S_SHOWDESC (S_LABEL|S_TITLE|S_YESNO|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_COLOR|S_PREV|S_NEXT|S_INPUT|S_WEAP|S_NUM|S_PERC|S_PERC_RANGE|S_FILE|S_CREDIT|S_CHOICE|S_FUNC|S_THERMO|S_NAME)
 
-#define S_SHOWSET  (S_YESNO|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_COLOR|S_INPUT|S_WEAP|S_NUM|S_PERC|S_FILE|S_CHOICE|S_FUNC|S_THERMO|S_NAME)
+#define S_SHOWSET  (S_YESNO|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_COLOR|S_INPUT|S_WEAP|S_NUM|S_PERC|S_PERC_RANGE|S_FILE|S_CHOICE|S_FUNC|S_THERMO|S_NAME)
 
 #define S_STRING (S_FILE|S_NAME)
 
-#define S_HASDEFPTR (S_STRING|S_YESNO|S_NUM|S_PERC|S_WEAP|S_COLOR|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_CHOICE)
+#define S_HASDEFPTR (S_STRING|S_YESNO|S_NUM|S_PERC|S_PERC_RANGE|S_WEAP|S_COLOR|S_CRITEM|S_CRBLOOD|S_CRCHOICE|S_CHOICE)
 
 /////////////////////////////
 //
@@ -339,8 +342,8 @@ static void M_DrawSave(void);
 static void M_DrawHelp (void);                                     // phares 5/04/98
 static void M_DrawAd(void);
 
-static void M_DrawSaveLoadBorder(int x,int y);
-static void M_DrawThermo(int x,int y,int thermWidth,int thermRange,int thermDot);
+static void M_DrawSaveLoadBorder(int x,int y,dboolean highlight);
+static void M_DrawThermo(int x,int y,int thermWidth,int thermRange,int thermDot,dboolean highlight);
 static void M_DrawEmptyCell(menu_t *menu,int item);
 static void M_DrawSelCell(menu_t *menu,int item);
 static void M_WriteText(int x, int y, const char *string, int cm);
@@ -948,6 +951,31 @@ static void M_DeleteSaveGame(int slot)
 }
 
 //
+// Load/Save Highlight
+//
+
+static dboolean M_FileSlotEnabled(int menu, int item)
+{
+  if (menu == MN_LOAD)
+    return LoadMenue[item].status;
+
+  if (menu == MN_SAVE)
+    return current_page != 0;
+
+  return false;
+}
+
+dboolean M_FileBoxHighlight(int menu, int item)
+{
+  return item == itemOn && M_FileSlotEnabled(menu, item);
+}
+
+int M_FileTextColor(int menu, int item)
+{
+  return M_FileSlotEnabled(menu, item) ? CR_DEFAULT : CR_DARKEN;
+}
+
+//
 // M_LoadGame & Cie.
 //
 
@@ -963,8 +991,8 @@ static void M_DrawLoad(void)
   // CPhipps - patch drawing updated
   V_DrawMenuNamePatch(72 ,LOADGRAPHIC_Y, "M_LOADG", CR_DEFAULT, VPT_STRETCH);
   for (i = 0 ; i < load_end ; i++) {
-    M_DrawSaveLoadBorder(LoadDef.x,LoadDef.y+LINEHEIGHT*i);
-    M_WriteText(LoadDef.x,LoadDef.y+LINEHEIGHT*i,savegamestrings[i], CR_DEFAULT);
+    M_DrawSaveLoadBorder(LoadDef.x,LoadDef.y+LINEHEIGHT*i,M_FileBoxHighlight(MN_LOAD,i));
+    M_WriteText(LoadDef.x,LoadDef.y+LINEHEIGHT*i,savegamestrings[i],M_FileTextColor(MN_LOAD,i));
   }
 
   M_DrawTabs(saves_pages, 5, 145);
@@ -977,19 +1005,27 @@ static void M_DrawLoad(void)
 // Draw border for the savegame description
 //
 
-static void M_DrawSaveLoadBorder(int x,int y)
+static void M_DrawSaveLoadBorder(int x,int y,dboolean highlight)
 {
   int i;
+  int color = CR_DEFAULT;
+  int flags = VPT_STRETCH;
 
-  V_DrawMenuNamePatch(x-8, y+7, "M_LSLEFT", CR_DEFAULT, VPT_STRETCH);
+  if (highlight)
+    color += CR_LIGHTEN;
+
+  if (color != CR_DEFAULT)
+    flags |= VPT_COLOR;
+
+  V_DrawMenuNamePatch(x-8, y+7, "M_LSLEFT", color, flags);
 
   for (i = 0 ; i < 24 ; i++)
     {
-      V_DrawMenuNamePatch(x, y+7, "M_LSCNTR", CR_DEFAULT, VPT_STRETCH);
+      V_DrawMenuNamePatch(x, y+7, "M_LSCNTR", color, flags);
       x += 8;
     }
 
-  V_DrawMenuNamePatch(x, y+7, "M_LSRGHT", CR_DEFAULT, VPT_STRETCH);
+  V_DrawMenuNamePatch(x, y+7, "M_LSRGHT", color, flags);
 }
 
 //
@@ -1189,11 +1225,6 @@ void M_AutoSave(void)
   doom_printf("autosave");
 }
 
-int M_GetCurrentPage(void)
-{
-  return current_page;
-}
-
 //
 //  M_SaveGame & Cie.
 //
@@ -1210,8 +1241,8 @@ static void M_DrawSave(void)
   V_DrawMenuNamePatch(72, LOADGRAPHIC_Y, "M_SAVEG", CR_DEFAULT, VPT_STRETCH);
   for (i = 0 ; i < load_end ; i++)
     {
-    M_DrawSaveLoadBorder(SaveDef.x,SaveDef.y+LINEHEIGHT*i);
-    M_WriteText(SaveDef.x,SaveDef.y+LINEHEIGHT*i,savegamestrings[i], current_page == 0 ? CR_DARKEN : CR_DEFAULT);
+    M_DrawSaveLoadBorder(SaveDef.x,SaveDef.y+LINEHEIGHT*i,M_FileBoxHighlight(MN_SAVE,i));
+    M_WriteText(SaveDef.x,SaveDef.y+LINEHEIGHT*i,savegamestrings[i],M_FileTextColor(MN_SAVE,i));
     }
 
   M_DrawTabs(saves_pages, 5, 145);
@@ -1487,6 +1518,11 @@ menu_t SoundDef =
 // Change Sfx & Music volumes
 //
 
+dboolean M_CurrentSelectedItem(int item)
+{
+  return itemOn == item;
+}
+
 static void M_DrawSound(void)
 {
   char num[4];
@@ -1496,12 +1532,12 @@ static void M_DrawSound(void)
   // CPhipps - patch drawing updated
   V_DrawMenuNamePatch(60, 38, "M_SVOL", CR_DEFAULT, VPT_STRETCH);
 
-  M_DrawThermo(SoundDef.x,SoundDef.y+LINEHEIGHT*(sfx_vol+1),16,16,snd_SfxVolume);
+  M_DrawThermo(SoundDef.x,SoundDef.y+LINEHEIGHT*(sfx_vol+1),16,16,snd_SfxVolume,M_CurrentSelectedItem(sfx_vol));
   snprintf(num, sizeof(num), "%3d", snd_SfxVolume);
   strcpy(menu_buffer, num);
   M_DrawMenuString(SoundDef.x + 150, SoundDef.y+LINEHEIGHT*(sfx_vol+1) + 3, cr_value_edit);
 
-  M_DrawThermo(SoundDef.x,SoundDef.y+LINEHEIGHT*(music_vol+1),16,16,snd_MusicVolume);
+  M_DrawThermo(SoundDef.x,SoundDef.y+LINEHEIGHT*(music_vol+1),16,16,snd_MusicVolume,M_CurrentSelectedItem(music_vol));
   snprintf(num, sizeof(num), "%3d", snd_MusicVolume);
   strcpy(menu_buffer, num);
   M_DrawMenuString(SoundDef.x + 150, SoundDef.y+LINEHEIGHT*(music_vol+1) + 3, cr_value_edit);
@@ -2722,6 +2758,63 @@ static void M_GetTrimmedStringWithEllipsis(char* dest, const char* src, int max_
 }
 
 //
+// Thermo stuff
+//
+
+static int M_ThermoDisplayUpperLimit(const setup_menu_t *s)
+{
+  int upper_limit = dsda_UpperLimitConfig(s->config_id);
+
+  if (upper_limit == INT_MAX)
+    return 50; // thermo limit from Woof
+
+  return upper_limit;
+}
+
+static int M_ThermoDisplayValue(const setup_menu_t *s)
+{
+  int lower_limit = dsda_LowerLimitConfig(s->config_id);
+  int upper_limit = dsda_UpperLimitConfig(s->config_id);
+  int display_limit = M_ThermoDisplayUpperLimit(s);
+  int value = dsda_IntConfig(s->config_id);
+
+  if (upper_limit == INT_MAX)
+    return CLAMP(value, lower_limit, display_limit);
+
+  return CLAMP(value, lower_limit, upper_limit);
+}
+
+static int M_ThermoEditUpperLimit(const setup_menu_t *s)
+{
+  // allow higher values than thermo limit
+  if (s->m_flags & S_UNBOUND)
+    return dsda_UpperLimitConfig(s->config_id);
+
+  return M_ThermoDisplayUpperLimit(s);
+}
+
+static dboolean M_NextThermoValueExists(const setup_menu_t *s)
+{
+  return dsda_IntConfig(s->config_id) < M_ThermoEditUpperLimit(s);
+}
+
+static int M_PrevThermoValue(const setup_menu_t *s)
+{
+  int value = dsda_IntConfig(s->config_id);
+  int lower_limit = dsda_LowerLimitConfig(s->config_id);
+
+  return value <= lower_limit ? lower_limit : value - 1;
+}
+
+static int M_NextThermoValue(const setup_menu_t *s)
+{
+  int value = dsda_IntConfig(s->config_id);
+  int upper_limit = M_ThermoEditUpperLimit(s);
+
+  return value >= upper_limit ? upper_limit : value + 1;
+}
+
+//
 // Two Line Choice
 //
 
@@ -2878,7 +2971,7 @@ static dboolean M_NextChoiceExists(const setup_menu_t *s)
   const char **choice_list;
 
   if (flags & S_THERMO)
-    return value < dsda_UpperLimitConfig(s->config_id);
+    return M_NextThermoValueExists(s);
 
   choice_list = M_SetupChoiceList(s);
 
@@ -2909,10 +3002,38 @@ static void M_ChoiceBlinkingArrowRight(const setup_menu_t *s, int x, int y, int 
   }
 }
 
+static void M_FormatMenuSetting(const setup_menu_t *s, int value)
+{
+  menu_flags_t flags = s->m_flags;
+
+  // If range, convert value to 0-100% range
+  if (flags & S_PERC_RANGE)
+  {
+    int lower_limit = dsda_LowerLimitConfig(s->config_id);
+    int upper_limit = dsda_UpperLimitConfig(s->config_id);
+
+    if (upper_limit > lower_limit)
+      value = (value - lower_limit) * 100 / (upper_limit - lower_limit);
+  }
+
+  // add % to value
+  if (flags & (S_PERC | S_PERC_RANGE))
+    snprintf(menu_buffer, sizeof(menu_buffer), "%d%%", value);
+  // decimal form to value
+  else if (flags & S_MULTIPLIER)
+    snprintf(menu_buffer, sizeof(menu_buffer), "%d.%d", value / 10, value % 10);
+  // normal value
+  else
+    snprintf(menu_buffer, sizeof(menu_buffer), "%d", value);
+}
+
 static void M_DrawSetting(const setup_menu_t* s, int y)
 {
   int x = s->m_x, color;
   menu_flags_t flags = s->m_flags;
+
+  if (flags & S_PERC_RANGE)
+    flags |= S_PERC;
 
   if (M_ItemHidden(s))
     flags |= S_HIDDEN_FLAGS;
@@ -2961,10 +3082,7 @@ static void M_DrawSetting(const setup_menu_t* s, int y)
 
       value = dsda_IntConfig(s->config_id);
 
-      if (flags & S_PERC)
-        snprintf(menu_buffer, sizeof(menu_buffer), "%d%%", value); // add %
-      else
-        snprintf(menu_buffer, sizeof(menu_buffer), "%d", value);
+      M_FormatMenuSetting(s, value);
 
       if (flags & S_CRITEM && !(flags & S_CHOICE))
       {
@@ -3259,17 +3377,12 @@ static void M_DrawSetting(const setup_menu_t* s, int y)
   }
 
   if (flags & S_THERMO) {
-    M_DrawThermo(x, y, 8, dsda_UpperLimitConfig(s->config_id) + 1, dsda_IntConfig(s->config_id));
+    int value;
 
-    if (flags & S_PERC)
-    {
-      int value = 0;
-      if (dsda_IntConfig(s->config_id) != 0)
-        value = (dsda_IntConfig(s->config_id) * 100 / dsda_UpperLimitConfig(s->config_id));
-      snprintf(menu_buffer, sizeof(menu_buffer), "%d%%", value);
-    }
-    else
-      snprintf(menu_buffer, sizeof(menu_buffer), "%d", dsda_IntConfig(s->config_id));
+    value = dsda_IntConfig(s->config_id);
+
+    M_DrawThermo(x, y, 8, M_ThermoDisplayUpperLimit(s) + 1, M_ThermoDisplayValue(s), flags & S_HILITE);
+    M_FormatMenuSetting(s, value);
 
     M_ChoiceBlinkingArrowRight(s, x + 80, y + 3, color);
     M_DrawMenuString(x + 80, y + 3, color);
@@ -3293,6 +3406,7 @@ static void M_DrawScreenItems(const setup_menu_t* base_src, int base_y)
   int i = 0;
   int end_y;
   int carry_y = 0; // Bigger elements (like S_THERMO) needs a bigger offset that carries over for all settings
+  int extra_y = 0; // Account for thermo and two-line options for menu items
   int scroll_i = 0;
   int current_i = 0;
   int max_i = 0;
@@ -3302,6 +3416,8 @@ static void M_DrawScreenItems(const setup_menu_t* base_src, int base_y)
   int line_height = 0;
   float scrollbar_scale = 0;
   const setup_menu_t* src;
+
+  line_height = menu_font->line_height < 9 ? menu_font->line_height : 9;
 
   i = 0;
   for (src = base_src; !(src->m_flags & S_END); src++) {
@@ -3321,14 +3437,17 @@ static void M_DrawScreenItems(const setup_menu_t* base_src, int base_y)
       if (i > max_i)
         max_i = i;
 
+      if (src->m_flags & S_THERMO)
+        extra_y += 6;
+      else if (src->m_flags & S_TWO_LINE)
+        extra_y += line_height;
+
       ++i;
     }
   }
 
 
-  line_height = menu_font->line_height < 9 ? menu_font->line_height : 9;
-
-  end_y = base_y + (max_i + 1) * line_height;
+  end_y = base_y + (max_i + 1) * line_height + extra_y;
   if (end_y > 190)
     excess_i = (end_y - 190 + line_height - 1) / line_height;
 
@@ -3504,6 +3623,9 @@ static dboolean M_ResetSetupItemDefault(setup_menu_t *ptr)
   if (!M_SetupItemCanReset(ptr))
     return false;
 
+  if (flags & S_PERC_RANGE)
+    flags |= S_PERC;
+
   switch (flags & (S_STR | S_YESNO | S_NUM | S_PERC | S_COLOR | S_CRCHOICE | S_CHOICE | S_THERMO))
   {
     case S_CHOICE | S_STR:
@@ -3598,6 +3720,9 @@ static void M_DrawInstructions(void)
 {
   const setup_menu_t *s = current_setup_menu + set_menu_itemon;
   menu_flags_t flags = s->m_flags;
+
+  if (flags & S_PERC_RANGE)
+    flags |= S_PERC;
 
   // There are different instruction messages depending on whether you
   // are changing an item or just sitting on it.
@@ -3976,7 +4101,7 @@ setup_menu_t keys_automap_settings[] =  // Key Binding screen strings
   { "Overlay",          S_INPUT, m_map, g_all, KB_X, 0, dsda_input_map_overlay },
   { "Textured",         S_INPUT, m_map, g_all, KB_X, 0, dsda_input_map_textured },
   { "Highlight By Tag", S_INPUT, m_map, g_all, KB_X, 0, dsda_input_map_highlight_by_tag },
-  { "Mouse Pan",        S_INPUT, m_map, g_all, KB_X, 0, dsda_input_map_mouse_pan },
+  { "Mouse Pan",        S_INPUT|S_NYAN, m_map, g_all, KB_X, 0, dsda_input_map_mouse_pan },
 
   PREV_PAGE(keys_weapons_settings),
   NEXT_PAGE(keys_game_settings),
@@ -4275,17 +4400,28 @@ setup_menu_t* weap_settings[] =
   NULL
 };
 
+static const char* weap_switch_speed_list[] =
+{
+  [WEAPON_SPEED_SLOW] = "Slow",
+  [WEAPON_SPEED_DEFAULT] = "Default",
+  [WEAPON_SPEED_FAST] = "Fast",
+  [WEAPON_SPEED_FASTER] = "Faster",
+  [WEAPON_SPEED_INSTANT] = "Instant",
+  NULL
+};
+
 setup_menu_t weap_pref_settings[] =  // Weapons Settings screen
 {
   TITLE("Gameplay", WP_X),
   { "Boom Weapon Auto Switch", S_YESNO, m_conf, g_all, WP_X, dsda_config_switch_when_ammo_runs_out },
   { "Auto Switch on Pickup", S_YESNO, m_conf, g_all, WP_X, dsda_config_switch_weapon_on_pickup },
+  { "Weapon Switch Speed", S_CHOICE | S_NYAN, m_conf, g_all, WP_X, dsda_config_switch_speed, 0, weap_switch_speed_list },
   { "Berserk Fist Over Chainsaw", S_YESNO | S_NYAN, m_conf, g_doom, WP_X, dsda_config_switch_berserk_preferred },
   { "Direct Vertical Aiming", S_YESNO | S_NYAN, m_conf, g_all, WP_X, dsda_config_disable_horiz_autoaim },
   EMPTY_LINE,
   TITLE("Cosmetic", WP_X),
-  { "View Bob", S_THERMO | S_PERC, m_conf, g_all, WP1_X, dsda_config_viewbob },
-  { "Weapon Bob", S_THERMO | S_PERC, m_conf, g_all, WP1_X, dsda_config_weaponbob },
+  { "View Bob", S_THERMO | S_PERC_RANGE, m_conf, g_all, WP1_X, dsda_config_viewbob },
+  { "Weapon Bob", S_THERMO | S_PERC_RANGE, m_conf, g_all, WP1_X, dsda_config_weaponbob },
   EMPTY_LINE,
   { "Weapon Attack Alignment", S_CHOICE, m_conf, g_all, WP_X, dsda_config_weapon_attack_alignment, 0, weapon_attack_alignment_strings },
   { "Hide Weapon", S_YESNO, m_conf, g_all, WP_X, dsda_config_hide_weapon },
@@ -4374,7 +4510,6 @@ setup_menu_t auto_options_settings[] =
   EMPTY_LINE,
   { "Grid cell size 8..256, -1 for auto", S_NUM, m_conf, g_all, AU_X, dsda_config_map_grid_size },
   { "Pan speed (1..32)", S_NUM, m_conf, g_all, AU_X, dsda_config_map_pan_speed },
-  { "Mouse pan speed (1..32)", S_NUM, m_conf, g_all, AU_X, dsda_config_map_mouse_pan_speed },
   { "Zoom speed (1..32)", S_NUM, m_conf, g_all, AU_X, dsda_config_map_scroll_speed },
   { "Use mouse wheel for zooming", S_YESNO, m_conf, g_all, AU_X, dsda_config_map_wheel_zoom },
   { "Show Minimap", S_YESNO, m_conf, g_all, AU_X, dsda_config_show_minimap },
@@ -4400,7 +4535,6 @@ static const char *map_things_appearance_list[] =
 
 static const char *map_player_arrow_list[] = { "Default", "Modern", "Doom", "Raven", NULL };
 static const char *map_marker_style_list[] = { "Classic", "Line", NULL };
-static const char *automap_background_list[] = { "Off", "Default", "On", NULL };
 static const char *automap_linesize_list[] = { "Auto", "1x", "2x", "3x", "4x", "5x", "6x", NULL };
 
 setup_menu_t auto_appearance_settings[] =
@@ -4409,7 +4543,7 @@ setup_menu_t auto_appearance_settings[] =
   { "Automap Markers", S_CHOICE | S_NYAN, m_conf, g_all, AA_X, dsda_config_map_marker_style, 0, map_marker_style_list },
   FUNC("Thing Appearance", S_CENTER | S_NYAN, AA_X, M_Sub_AutoMapThings),
   EMPTY_LINE,
-  { "Automap background", S_CHOICE | S_NYAN, m_conf, g_all, AA_X, dsda_config_automap_background, 0, automap_background_list },
+  { "Automap background", S_YESNO | S_NYAN, m_conf, g_all, AA_X, dsda_config_automap_background },
   { "Background shade", S_PERC | S_NYAN, m_conf, g_all, AA_X, dsda_config_automap_background_shade, 0, empty_list, EXCLUDE(dsda_config_automap_background, false) },
   { "Parallex Effect", S_YESNO | S_NYAN, m_conf, g_all, AA_X, dsda_config_automap_parallax, 0, empty_list, EXCLUDE(dsda_config_automap_background, false) },
   EMPTY_LINE,
@@ -4674,6 +4808,7 @@ setup_menu_t* gen_settings[] =
 #define G_X 210
 #define G2_X 220
 #define G3_X 200
+#define GP_X 180
 
 static const char *videomodes[] = {
   "Software",
@@ -4750,7 +4885,7 @@ setup_menu_t gen_audio_settings[] = {
   { "Play SFX For Quicksave", S_YESNO | S_NYAN, m_conf, g_all, G3_X, dsda_config_quicksave_sfx },
   EMPTY_LINE,
   { "Preferred MIDI player", S_CHOICE | S_STR, m_conf, g_all, G3_X, dsda_config_snd_midiplayer, 0, midiplayers },
-  { "Soundfont", S_CHOICE | S_STR | S_TWO_LINE, m_conf, g_all, G3_X, dsda_config_snd_soundfont, 0, soundfont_list, DEPEND(dsda_config_snd_midiplayer, MIDI_FLUIDSYNTH) },
+  { "Soundfont", S_CHOICE | S_STR | S_TWO_LINE | S_NYAN, m_conf, g_all, G3_X, dsda_config_snd_soundfont, 0, soundfont_list, DEPEND(dsda_config_snd_midiplayer, MIDI_FLUIDSYNTH) },
   EMPTY_LINE,
   FUNC("Advanced Sound", S_CENTER, G3_X, M_Sub_AdvAudio),
 
@@ -4766,15 +4901,15 @@ DEPEND_LIST(freelook_list,
 setup_menu_t gen_device_settings[] = {
   { "Enable Mouse", S_YESNO, m_conf, g_all, G2_X, dsda_config_use_mouse },
   { "Vertical Mouse Movement", S_YESNO, m_conf, g_all, G2_X, dsda_config_vertmouse, 0, empty_list, DEPEND(dsda_config_use_mouse, true) },
-  { "Dbl-Click As Use", S_YESNO, m_conf, g_all, G2_X, dsda_config_mouse_doubleclick_as_use, 0, empty_list, DEPEND(dsda_config_use_mouse, true) },
+  { "Invert Look", S_YESNO, m_conf, g_all, G2_X, dsda_config_movement_mouseinvert, 0, empty_list, DEPEND(dsda_config_use_mouse, true) },
   FUNC_DEPEND("Mouse Options", S_CENTER, g_all, G2_X, M_Sub_Mouse, dsda_config_use_mouse, true),
   EMPTY_LINE,
   { "Enable Gamepad", S_YESNO, m_conf, g_all, G2_X, dsda_config_use_game_controller },
   { "Swap Analogs", S_YESNO, m_conf, g_all, G2_X, dsda_config_swap_analogs, 0, empty_list, DEPEND(dsda_config_use_game_controller, true) },
+  { "Invert Look", S_YESNO, m_conf, g_all, G2_X, dsda_config_invert_analog_look, 0, empty_list, DEPEND(dsda_config_use_game_controller, true) },
   FUNC_DEPEND("Gamepad Options", S_CENTER, g_all, G2_X, M_Sub_Gamepad, dsda_config_use_game_controller, true),
   EMPTY_LINE,
   { "Enable Freelook", S_YESNO, m_conf, g_all, G2_X, dsda_config_freelook },
-  { "Invert Freelook", S_YESNO, m_conf, g_all, G2_X, dsda_config_movement_mouseinvert, 0, empty_list, DEPEND_MULTI(freelook_list) },
   { "Freelook AutoAim", S_YESNO | S_NYAN, m_conf, g_all, G2_X, dsda_config_freelook_autoaim, 0, empty_list, DEPEND_MULTI(freelook_list) },
   { "Freelook Enhanced Flying", S_YESNO | S_NYAN, m_conf, g_all, G2_X, dsda_config_freelook_enhanced_flying, 0, empty_list, DEPEND_MULTI(freelook_list) },
 
@@ -4910,16 +5045,18 @@ setup_menu_t* mouse_settings[] =
 };
 
 setup_menu_t mouse_adv_settings[] = {
-  { "Horizontal Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_mouse_sensitivity_horiz },
-  { "Vertical Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_mouse_sensitivity_vert },
-  { "Free Look Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_mouse_sensitivity_mlook },
-  { "Acceleration", S_NUM, m_conf, g_all, G2_X, dsda_config_mouse_acceleration },
+  { "Horizontal Sensitivity", S_THERMO | S_UNBOUND, m_conf, g_all, G3_X, dsda_config_mouse_sensitivity_horiz },
+  { "Vertical Sensitivity", S_THERMO | S_UNBOUND, m_conf, g_all, G3_X, dsda_config_mouse_sensitivity_vert },
+  { "Free Look Sensitivity", S_THERMO | S_UNBOUND, m_conf, g_all, G3_X, dsda_config_mouse_sensitivity_mlook },
+  { "Automap Pan Sensitivity", S_THERMO | S_UNBOUND | S_NYAN, m_conf, g_all, G3_X, dsda_config_mouse_sensitivity_automap },
+  { "Acceleration", S_THERMO, m_conf, g_all, G3_X, dsda_config_mouse_acceleration },
   EMPTY_LINE,
-  { "Mouse Strafe Divisor", S_NUM, m_conf, g_all, G2_X, dsda_config_movement_mousestrafedivisor },
-  { "Dbl-Click As Use", S_YESNO, m_conf, g_all, G2_X, dsda_config_mouse_doubleclick_as_use },
-  { "Vertical Mouse Movement", S_YESNO, m_conf, g_all, G2_X, dsda_config_vertmouse },
-  { "Carry Fractional Tics", S_YESNO, m_conf, g_all, G2_X, dsda_config_mouse_carrytics },
-  { "Mouse Stutter Correction", S_YESNO, m_conf, g_all, G2_X, dsda_config_mouse_stutter_correction },
+  { "Invert Look", S_YESNO, m_conf, g_all, G3_X, dsda_config_movement_mouseinvert },
+  { "Mouse Strafe Divisor", S_NUM, m_conf, g_all, G3_X, dsda_config_movement_mousestrafedivisor },
+  { "Dbl-Click As Use", S_YESNO, m_conf, g_all, G3_X, dsda_config_mouse_doubleclick_as_use },
+  { "Vertical Mouse Movement", S_YESNO, m_conf, g_all, G3_X, dsda_config_vertmouse },
+  { "Carry Fractional Tics", S_YESNO, m_conf, g_all, G3_X, dsda_config_mouse_carrytics },
+  { "Mouse Stutter Correction", S_YESNO, m_conf, g_all, G3_X, dsda_config_mouse_stutter_correction },
 
   FINAL_ENTRY
 };
@@ -4948,33 +5085,43 @@ static void M_Sub_DrawMouse(void)
 static const char *gamepad_pages[] =
 {
   "Gamepad Options",
+  "Deadzones",
   NULL
 };
 
-setup_menu_t gamepad_adv_settings[];
+setup_menu_t gamepad_adv_settings[], gamepad_adv_deadzones[];
 
 setup_menu_t* gamepad_settings[] =
 {
   gamepad_adv_settings,
+  gamepad_adv_deadzones,
   NULL
 };
 
 setup_menu_t gamepad_adv_settings[] = {
-  { "Swap Analogs", S_YESNO, m_conf, G2_X, dsda_config_swap_analogs },
+  { "Forward Sensitivity", S_THERMO | S_MULTIPLIER, m_conf, g_all, GP_X, dsda_config_analog_forward_sensitivity_y },
+  { "Strafe Sensitivity", S_THERMO | S_MULTIPLIER, m_conf, g_all, GP_X, dsda_config_analog_strafe_sensitivity_x },
+  { "Turn Speed", S_THERMO, m_conf, g_all, GP_X, dsda_config_analog_turn_sensitivity_x },
+  { "Look Speed", S_THERMO, m_conf, g_all, GP_X, dsda_config_analog_look_sensitivity_y },
+  { "Acceleration", S_THERMO, m_conf, g_all, GP_X, dsda_config_analog_look_acceleration },
   EMPTY_LINE,
-  { "Left Horizontal Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_left_analog_sensitivity_x },
-  { "Left Vertical Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_left_analog_sensitivity_y },
-  { "Right Horizontal Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_right_analog_sensitivity_x },
-  { "Right Vertical Sensitivity", S_NUM, m_conf, g_all, G2_X, dsda_config_right_analog_sensitivity_y },
-  { "Acceleration", S_NUM, m_conf, g_all, G2_X, dsda_config_analog_look_acceleration },
-  EMPTY_LINE,
-  { "Left Analog Deadzone", S_NUM, m_conf, g_all, G2_X, dsda_config_left_analog_deadzone },
-  { "Right Analog Deadzone", S_NUM, m_conf, g_all, G2_X, dsda_config_right_analog_deadzone },
-  { "Left Trigger Deadzone", S_NUM, m_conf, g_all, G2_X, dsda_config_left_trigger_deadzone },
-  { "Right Trigger Deadzone", S_NUM, m_conf, g_all, G2_X, dsda_config_right_trigger_deadzone },
+  { "Invert Look", S_YESNO, m_conf, g_all, GP_X, dsda_config_invert_analog_look },
+  { "Swap Analogs", S_YESNO, m_conf, g_all, GP_X, dsda_config_swap_analogs },
 
+  NEXT_PAGE(gamepad_adv_deadzones),
   FINAL_ENTRY
 };
+
+setup_menu_t gamepad_adv_deadzones[] = {
+  { "Left Analog Deadzone", S_THERMO | S_PERC, m_conf, g_all, GP_X, dsda_config_left_analog_deadzone },
+  { "Right Analog Deadzone", S_THERMO | S_PERC, m_conf, g_all, GP_X, dsda_config_right_analog_deadzone },
+  { "Left Trigger Deadzone", S_THERMO | S_PERC, m_conf, g_all, GP_X, dsda_config_left_trigger_deadzone },
+  { "Right Trigger Deadzone", S_THERMO | S_PERC, m_conf, g_all, GP_X, dsda_config_right_trigger_deadzone },
+
+  PREV_PAGE(gamepad_adv_settings),
+  FINAL_ENTRY
+};
+
 
 static void M_Sub_Gamepad(void)
 {
@@ -5174,8 +5321,8 @@ setup_menu_t display_hud_settings[] =  // Demos Settings screen
 {
   TITLE("Messages", G_X),
   { "Show Messages", S_YESNO, m_conf, g_all, G_X, dsda_config_show_messages },
-  { "Colorize Messages", S_YESNO, m_conf, g_all, G_X, dsda_config_colorize_messages, 0, empty_list, DEPEND(dsda_config_show_messages, true) },
-  { "Fade Messages", S_YESNO, m_conf, g_all, G_X, dsda_config_fade_messages, 0, empty_list, DEPEND(dsda_config_show_messages, true)  },
+  { "Colorize Messages", S_YESNO | S_NYAN, m_conf, g_all, G_X, dsda_config_colorize_messages, 0, empty_list, DEPEND(dsda_config_show_messages, true) },
+  { "Fade Messages", S_YESNO | S_NYAN, m_conf, g_all, G_X, dsda_config_fade_messages, 0, empty_list, DEPEND(dsda_config_show_messages, true)  },
   FUNC("Announcements", S_CENTER | S_NYAN, G_X, M_Sub_Announce),
   FUNC("Obituaries", S_CENTER | S_NYAN, G_X, M_Sub_Obituary),
   EMPTY_LINE,
@@ -5195,6 +5342,7 @@ setup_menu_t display_color_settings[] = {
   {"Map Totals Label", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_totals_label },
   {"Map Totals Value", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_totals_value },
   {"Map Totals Max", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_totals_max },
+  {"Map Time Label", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_time_label },
   {"Map Time Level", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_time_level },
   {"Map Time Total", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_time_total },
   {"Map Coords", S_CRCHOICE, m_conf, g_all, G_X, dsda_tc_map_coords },
@@ -7646,9 +7794,13 @@ static dboolean M_LevelTableResponder(int ch, int action, event_t* ev)
 static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
 {
   setup_menu_t* ptr1 = current_setup_menu + set_menu_itemon;
+  menu_flags_t flags = ptr1->m_flags;
+
+  if (flags & S_PERC_RANGE)
+    flags |= S_PERC;
 
   // Execute functions
-  if (ptr1->m_flags & S_FUNC)
+  if (flags & S_FUNC)
   {
     if (action == MENU_ENTER) {
       if (M_ItemDisabled(ptr1))
@@ -7676,7 +7828,7 @@ static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
       return true;
     }
 
-    if (ptr1->m_flags & S_YESNO) // yes or no setting?
+    if (flags & S_YESNO) // yes or no setting?
     {
       if (action == MENU_ENTER) {
         dsda_ToggleConfig(ptr1->config_id, true);
@@ -7685,8 +7837,8 @@ static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
       return true;
     }
 
-    if (ptr1->m_flags & (S_NUM | S_PERC) &&  // number?
-       !(ptr1->m_flags & S_THERMO)) // skip thermo
+    if (flags & (S_NUM | S_PERC) &&  // number?
+       !(flags & S_THERMO)) // skip thermo
     {
       if (setup_gather) { // gathering keys for a value?
         /* killough 10/98: Allow negatives, and use a more
@@ -7725,7 +7877,7 @@ static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
       return true;
     }
 
-    if (ptr1->m_flags & S_CHOICE || ptr1->m_flags & S_CRCHOICE) // selection of choices?
+    if (flags & S_CHOICE || flags & S_CRCHOICE) // selection of choices?
     {
       const char** choice_list = M_SetupChoiceList(ptr1);
       if (action == MENU_LEFT) {
@@ -7733,7 +7885,7 @@ static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
         {
           S_StartVoidSound(g_sfx_menu);
 
-          if (ptr1->m_flags & S_STR)
+          if (flags & S_STR)
           {
             int value = M_SetupChoiceValue(ptr1) - 1;
 
@@ -7784,13 +7936,13 @@ static dboolean M_SetupCommonSelectResponder(int ch, int action, event_t* ev)
     {
       if (action == MENU_LEFT) {
         if (M_PrevChoiceExists(ptr1)) {
-          dsda_DecrementIntConfig(ptr1->config_id, true);
+          dsda_UpdateIntConfig(ptr1->config_id, M_PrevThermoValue(ptr1), true);
           S_StartVoidSound(g_sfx_menu);
         }
       }
       else if (action == MENU_RIGHT) {
         if (M_NextChoiceExists(ptr1)) {
-          dsda_IncrementIntConfig(ptr1->config_id, true);
+          dsda_UpdateIntConfig(ptr1->config_id, M_NextThermoValue(ptr1), true);
           S_StartVoidSound(g_sfx_menu);
         }
       }
@@ -7811,6 +7963,10 @@ static dboolean M_SetupNavigationResponder(int ch, int action, event_t* ev)
 {
   setup_menu_t* ptr1 = current_setup_menu + set_menu_itemon;
   setup_menu_t* ptr2 = NULL;
+  menu_flags_t flags = ptr1->m_flags;
+
+  if (flags & S_PERC_RANGE)
+    flags |= S_PERC;
 
   if (action == MENU_DOWN)
   {
@@ -7855,9 +8011,9 @@ static dboolean M_SetupNavigationResponder(int ch, int action, event_t* ev)
 
   if (action == MENU_CLEAR)
   {
-    if (ptr1->m_flags & S_INPUT)
+    if (flags & S_INPUT)
     {
-      if (ptr1->m_flags & S_NOCLEAR)
+      if (flags & S_NOCLEAR)
       {
         S_StartVoidSound(g_sfx_oof);
       }
@@ -7888,8 +8044,6 @@ static dboolean M_SetupNavigationResponder(int ch, int action, event_t* ev)
 
   if (action == MENU_ENTER)
   {
-    menu_flags_t flags = ptr1->m_flags;
-
     if (M_ItemDisabled(ptr1))
     {
       S_StartVoidSound(g_sfx_oof);
@@ -9130,14 +9284,22 @@ void M_Drawer (void)
     {
       dboolean optional_lump_missing = M_OptionalLumpMissing(&currentMenu->menuitems[i]);
       const char *alttext = currentMenu->menuitems[i].alttext;
+      int color = currentMenu->menuitems[i].color;
+      int flags = VPT_STRETCH;
+
+      if (i == itemOn)
+        color += CR_LIGHTEN;
+
+      if (color != CR_DEFAULT)
+        flags |= VPT_COLOR; 
 
       if (!lumps_missing && currentMenu->menuitems[i].name[0] && !optional_lump_missing)
         V_DrawMenuNamePatch(x, y, currentMenu->menuitems[i].name,
-                        currentMenu->menuitems[i].color, VPT_STRETCH);
+                        color, flags);
 
       else if (alttext)
         M_WriteText(x, y + 8 - (M_StringHeight(alttext) / 2),
-                    alttext, currentMenu->menuitems[i].color);
+                    alttext, color);
 
       y += LINEHEIGHT;
     }
@@ -9254,32 +9416,40 @@ static void M_StopMessage(void)
 // proff/nicolas 09/20/98 -- changed for hi-res
 // CPhipps - patch drawing updated
 //
-static void M_DrawThermo(int x, int y, int thermWidth, int thermRange, int thermDot )
+static void M_DrawThermo(int x, int y, int thermWidth, int thermRange, int thermDot, dboolean highlight )
 {
   int xx;
   int i;
   int dot_offset;
 
-  if (raven) RETURN(MN_DrawSlider(x, y, thermWidth, thermRange, thermDot));
+  int color = CR_DEFAULT;
+  int flags = VPT_STRETCH;
+
+  if (raven) RETURN(MN_DrawSlider(x, y, thermWidth, thermRange, thermDot, highlight));
+
+  if (highlight)
+    color += CR_LIGHTEN;
+
+  if (color != CR_DEFAULT)
+    flags |= VPT_COLOR;
 
   xx = x;
-  V_DrawMenuNamePatch(xx, y, "M_THERML", CR_DEFAULT, VPT_STRETCH);
+  V_DrawMenuNamePatch(xx, y, "M_THERML", color, flags);
   xx += 8;
   for (i=0;i<thermWidth;i++)
   {
-    V_DrawMenuNamePatch(xx, y, "M_THERMM", CR_DEFAULT, VPT_STRETCH);
+    V_DrawMenuNamePatch(xx, y, "M_THERMM", color, flags);
     xx += 8;
   }
-  V_DrawMenuNamePatch(xx, y, "M_THERMR", CR_DEFAULT, VPT_STRETCH);
+  V_DrawMenuNamePatch(xx, y, "M_THERMR", color, flags);
 
   if (thermDot >= thermRange)
   {
     thermDot = thermRange - 1;
   }
 
-  dot_offset = 8 * thermDot * thermWidth / thermRange;
-  dot_offset -= thermRange / thermWidth;
-  V_DrawNamePatch(x + 8 + dot_offset, y, "M_THERMO", CR_DEFAULT, VPT_STRETCH);
+  dot_offset = thermDot * (thermWidth * 8 - 8) / (thermRange - 1);
+  V_DrawNamePatch(x + 8 + dot_offset, y, "M_THERMO", color, flags);
 }
 
 //

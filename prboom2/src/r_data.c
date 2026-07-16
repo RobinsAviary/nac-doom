@@ -248,6 +248,7 @@ static void R_InitTextures (void)
 
       texture->width = LittleShort(mtexture->width);
       texture->height = LittleShort(mtexture->height);
+      texture->direct = false;
       texture->patchcount = LittleShort(mtexture->patchcount);
 
         /* Mattias Engdeg�rd emailed me of the following explenation of
@@ -290,19 +291,36 @@ static void R_InitTextures (void)
       mpatch = mtexture->patches;
       patch = texture->patches;
 
-      for (j=0 ; j<texture->patchcount ; j++, mpatch++, patch++)
+      for (j=0 ; j<texture->patchcount ; j++, mpatch++)
         {
+          int patchindex = LittleShort(mpatch->patch);
+
+          // Check if patch is in PNAMES bounds
+          if (patchindex < 0 || patchindex >= nummappatches)
+            {
+              lprintf(LO_WARN, "\nR_InitTextures: Texture %.8s references patch index %d outside PNAMES table (%d entries)",
+                      texture->name, patchindex, nummappatches);
+              continue;
+            }
+
           patch->originx = LittleShort(mpatch->originx);
           patch->originy = LittleShort(mpatch->originy);
-          patch->patch = patchlookup[LittleShort(mpatch->patch)];
+          patch->patch = patchlookup[patchindex];
+          patch->direct = R_IsDirectTallPatchLump(patch->patch);
+          if (patch->direct)
+            texture->direct = true;
           if (patch->patch == -1)
             {
               //jff 8/3/98 use logical output routine
               lprintf(LO_ERROR,"\nR_InitTextures: Missing patch %d in texture %.8s",
-                     LittleShort(mpatch->patch), texture->name); // killough 4/17/98
+                     patchindex, texture->name); // killough 4/17/98
               ++errors;
             }
+
+          ++patch;
         }
+
+      texture->patchcount = (short)(patch - texture->patches);
 
       for (j=1; j*2 <= texture->width; j<<=1)
         ;

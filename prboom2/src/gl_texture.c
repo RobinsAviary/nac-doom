@@ -414,7 +414,9 @@ void gld_AddPatchToTexture(GLTexture *gltexture, unsigned char *buffer, const rp
   if ((cm==CR_DEFAULT) || (cm==CR_LIMIT))
     outr=&colormaps[0][0];
   else if (cm==CR_SHADOW)
-    outr=&colormaps[0][256 * 31];
+    outr=colrngs[CR_SHADOW];
+  else if (cm == CR_LIGHTEN)
+    outr=colrngs[CR_LIGHTEN];
   else if (cm==CR_DARKEN)
     outr=&colormaps[0][256 * 15];
   else if (cm<CR_LIMIT)
@@ -749,6 +751,14 @@ static GLTexture *gld_InitUnregisteredTexture(int texture_num, GLTexture *gltext
       gltexture->patch_index = texture->patches[0].patch;
       gltexture->flags |= GLTEXTURE_SKYHACK;
       gltexture->realtexheight=patch->height;
+    }
+    // [AR] Add support for post-less patches.
+    else
+    {
+      const rpatch_t *composite_patch = R_TextureCompositePatchByNum(texture_num);
+
+      if (composite_patch->flags & PATCH_DIRECTTALL)
+        gltexture->realtexheight=composite_patch->height;
     }
   }
 
