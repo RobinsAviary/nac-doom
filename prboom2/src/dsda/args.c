@@ -114,7 +114,7 @@ static arg_config_t arg_config[dsda_arg_count] = {
   [dsda_arg_warp] = {
     "-warp", NULL, NULL, NULL,
     "warp to the given episode and / or map",
-    arg_int_array, 0, 99, 0, 2,
+    arg_int_array, 0, 999, 0, 2,
   },
   [dsda_arg_skill] = {
     "-skill", NULL, NULL, NULL,

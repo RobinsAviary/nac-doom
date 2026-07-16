@@ -25,7 +25,7 @@ if(VCPKG_TOOLCHAIN)
     set(ENV{PKG_CONFIG_PATH} "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/pkgconfig")
 endif()
 
-set(PROJECT_TARNAME "nyan-doom")
+set(PROJECT_TARNAME "nac-doom")
 set(WAD_DATA "nyan-doom.wad")
 
 set(PROJECT_STRING "${PROJECT_NAME} v${PROJECT_VERSION}")

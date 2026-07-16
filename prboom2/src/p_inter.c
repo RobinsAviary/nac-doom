@@ -853,6 +853,10 @@ static int P_CheckGibDeath(mobj_t *source, mobj_t *target, method_t mod)
   if (mod == MOD_Nyan_Suicide)
     return true;
 
+  // exit out if config is disabled
+  if (!dsda_IntConfig(nyan_config_skullpop_easter_egg))
+    return false;
+
   // if receiving damage is -100 (player health)
   else if (target->player && source && target->health < -target->info->spawnhealth/2)
   {
@@ -1280,7 +1284,7 @@ static void P_KillMobj(mobj_t *source, mobj_t *inflictor, mobj_t *target, method
   target->tics -= P_Random(pr_killtics)&3;
 
   // [crispy] randomly flip corpse, blood and death animation sprites
-  if (target->flags_extra & MFX_MIRROREDCORPSE && !(target->flags & MF_SHOOTABLE))
+  if (target->flags_extra & MFX_MIRROREDCORPSE && !(target->flags & (MF_SHOOTABLE | MF_SPECIAL)))
   {
     if (Nyan_Random() & 1)
       target->intflags |= MIF_FLIP;
@@ -1346,8 +1350,10 @@ void P_DamageMobjBy(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damag
   dboolean buddha = false;
 
   /* killough 8/31/98: allow bouncers to take damage */
-  if ((!(target->flags & (MF_SHOOTABLE | MF_BOUNCES))) || (damage <= 0 && nac26))
+  if ((!(target->flags & (MF_SHOOTABLE | MF_BOUNCES))))
     return; // shouldn't happen...
+  if ((damage <= 0 && nac26))
+    return; // don't trigger pain state if no damage is done (allows for damage-less projectiles)
 
   if (target->health <= 0)
   {
@@ -1955,6 +1961,37 @@ void P_DamageMobjBy(mobj_t *target, mobj_t *inflictor, mobj_t *source, int damag
     if (justhit && (target->target == source || !target->target ||
         !(target->flags & target->target->flags & MF_FRIEND)))
       target->flags |= MF_JUSTHIT;    // fight back!
+}
+
+//
+// [AR] check states for action
+//
+
+static dboolean P_StateChainHasAction(int state, actionf_t action)
+{
+  int count;
+
+  for (count = 0; count < num_states; ++count)
+  {
+    if (state == g_s_null || state < 0 || state >= num_states)
+      return false;
+
+    if (states[state].action == action)
+      return true;
+
+    state = states[state].nextstate;
+  }
+
+  return false;
+}
+
+dboolean P_MobjHasDeathAction(mobj_t *mo, actionf_t action)
+{
+  if (!mo->info)
+    return false;
+
+  return P_StateChainHasAction(mo->info->deathstate,  action) ||
+         P_StateChainHasAction(mo->info->xdeathstate, action);
 }
 
 // heretic
