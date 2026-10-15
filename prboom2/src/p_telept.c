@@ -274,7 +274,7 @@ static int P_TeleportToDestination(mobj_t *destination, line_t *line, mobj_t *th
     thing->z = destination->z;
   else if (flags & TELF_KEEPHEIGHT)
     thing->z = thing->floorz + z;
-  else if (compatibility_level != finaldoom_compatibility)
+  else if (compatibility_level != finaldoom_compatibility && (flags & TELF_PRESERVEHEIGHT) == 0)
     thing->z = thing->floorz;
   thing->PrevZ = thing->z;
 

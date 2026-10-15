@@ -1369,6 +1369,10 @@ int P_CheckTag(line_t *line)
     case 209:
     case 208:
     case 207:
+    case 270:
+    case 273:
+    case 276:
+    case 277:
 
     case 11:                // Exits
     case 52:
@@ -1379,6 +1383,30 @@ int P_CheckTag(line_t *line)
 
     case 48:                // Scrolling walls
     case 85:
+    case 2057:              // ID24 Music changers
+    case 2058:
+    case 2059:
+    case 2060:
+    case 2061:
+    case 2062:
+    case 2063:
+    case 2064:
+    case 2065:
+    case 2066:
+    case 2067:
+    case 2068:
+    case 2087:
+    case 2088:
+    case 2089:
+    case 2090:
+    case 2091:
+    case 2092:
+    case 2093:
+    case 2094:
+    case 2095:
+    case 2096:
+    case 2097:
+    case 2098:
       return 1;   // zero tag allowed
 
     default:
@@ -2500,6 +2528,26 @@ void P_CrossCompatibleSpecialLine(line_t *line, int side, mobj_t *thing, dboolea
             break;
 
             //jff 1/29/98 end of added WR linedef types
+          case 270: //rbn 8/23/2026 WR Teleport (preserve height)
+              // TELEPORT!
+              map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_VANILLA | TELF_PRESERVEHEIGHT );
+              break;
+
+          case 273: //rbn 8/30/2026 WR Teleport (silent, preserve height)
+              // TELEPORT!
+              map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_PRESERVEHEIGHT );
+              break;
+
+          case 276: //rbn 8/30/2026 W1 Teleport (preserve height)
+              // TELEPORT!
+              if (map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_VANILLA | TELF_PRESERVEHEIGHT ))
+                  line->special = 0;
+              break;
+          case 277: //rbn 8/30/2026 W1 Teleport (silent, preserve height)
+              // TELEPORT!
+              if (map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_PRESERVEHEIGHT ))
+                  line->special = 0;
+              break;
         }
       break;
   }

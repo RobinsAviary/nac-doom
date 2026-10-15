@@ -142,6 +142,11 @@ void A_JumpIfFlagsSet(mobj_t *);
 void A_AddFlags(mobj_t *);
 void A_RemoveFlags(mobj_t *);
 
+// rbn New nac26 codepointers
+
+void A_JumpIfTargetHealthBelow(mobj_t *);
+void A_ClearTarget(mobj_t *);
+
 // heretic
 
 void A_UnHideThing(mobj_t * actor);

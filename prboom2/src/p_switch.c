@@ -1236,6 +1236,18 @@ P_UseSpecialLine
 
           // 1/29/98 jff end of added SR linedef types
 
+          case 274:
+            // 274 S1 Teleport (Preserve height)
+            if (map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_VANILLA | TELF_PRESERVEHEIGHT ))
+              P_ChangeSwitchTexture(line,0);
+            return true;
+
+          case 275:
+            // 275 SR Teleport (Preserve height)
+            if (map_format.ev_teleport( 0, line->special_args[0], line, side, thing, TELF_VANILLA | TELF_PRESERVEHEIGHT ))
+              P_ChangeSwitchTexture(line,1);
+            return true;
+
         }
       break;
 

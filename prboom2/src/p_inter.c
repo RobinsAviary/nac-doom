@@ -1234,6 +1234,8 @@ void P_DamageMobj(mobj_t *target,mobj_t *inflictor, mobj_t *source, int damage)
   /* killough 8/31/98: allow bouncers to take damage */
   if (!(target->flags & (MF_SHOOTABLE | MF_BOUNCES)))
     return; // shouldn't happen...
+  if ((damage <= 0 && nac26))
+      return; // rbn 10/15/26 don't trigger pain state if no damage is done (allows for damage-less projectiles)
 
   if (target->health <= 0)
   {
