@@ -1,7 +1,8 @@
 <div align="center">
     <img src="./prboom2/ICONS/dsda-doom.png" alt="dsda-doom logo" width="200"/>
-    <h1>dsda-doom</h1>
-    <h3>A modern but conservative Doom source port</h3>
+    <h1>nac-doom</h1>
+    <h3>A Doom source port :3</h3>
+    <h4>Forked from DSDA-Doom</h4>
 </div>
 
 <div align="center" markdown="1">
